@@ -27,7 +27,7 @@ Active (manuscript in submission prep and submitted to *GRL*). Breaking changes 
 
 > Jankowski, K. J., Johnson, K., Carey, J. C., Lyon, N., Julian, P., Bush, S., Sethna, L. R., Chen, A., Wymore, A. S., Kortelainen, P., Laudon, H., Poste, A., McKnight, D. M., McDowell, W. H., Shogren, A. J., Heindel, R. C., Raike, A., Jones, J. B., & Sullivan, P. L. (2025). **Global Aggregation of Stream Silica (GlASS) (Version 2.0, July 2025)** [Data release]. U.S. Geological Survey. https://doi.org/10.5066/P138M8AR
 
-**Analysis-ready inputs.** To facilitate exact reproduction of the figures and results, the harmonized/partitioned inputs generated from the USGS release (e.g., driver tables and split definitions) are archived on Zenodo: **DOI: _to be added once minted_**.  
+**Analysis-ready inputs.** To facilitate exact reproduction of the figures and results, the harmonized/partitioned inputs generated from the USGS release (e.g., driver tables and split definitions) are archived on Zenodo: **[![DOI](https://zenodo.org/badge/1038792577.svg)](https://doi.org/10.5281/zenodo.16884258)**.  
 
 > **Notes:**  
 > - The Step 1 scripts document the transformations from the USGS release to analysis-ready tables; see each script’s header for expected filenames and paths.  
