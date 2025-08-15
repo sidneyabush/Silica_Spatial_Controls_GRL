@@ -1,4 +1,4 @@
-# LTER-SiSyn Spatial Controls
+# Silica Spatial Controls - GRL
 
 Code for the “spatial controls” analysis behind our global riverine dissolved silicon (DSi) manuscript.
 
