@@ -29,7 +29,7 @@ librarian::shelf(dplyr, googledrive, ggplot2, data.table, lubridate, tidyr, stri
 record_length <- 5
 
 # Set working directory
-setwd("/Users/sidneybush/Library/CloudStorage/Box-Box/Sidney_Bush/SiSyn/harmonization_files")
+setwd("/Users/sidneybush/Library/CloudStorage/Box-Box/Sidney_Bush/SiSyn/harmonization_files/inputs")
 
 # helper to clean up Stream_ID formatting
 standardize_stream_id <- function(df) {
@@ -622,17 +622,24 @@ write.csv(
 
 # #############################################################################
 # 8. Create 70/30 temporal and 10% spatial partitions from full data (tot_si)
+#     — Revision 1 update to Cross-Val dataset
+#     — Validation stratified by lithology × DSi range (FNConc & log10(FNYield))
 # #############################################################################
 
-# Stratify the validation partition by final_cluster (consolidated rocktype)
+# ---- controls for number of quantile bins ----
+N_CONC  <- 3  # number of bins for concentration 
+N_YIELD <- 3  # number of bins for yield
+set.seed(42)
+
+# Lithology grouping
 site_clusters <- drivers_df %>%
-  distinct(Stream_ID,major_rock,rocks_volcanic,rocks_sedimentary,
-           rocks_carbonate_evaporite,rocks_metamorphic,rocks_plutonic) %>%
-  mutate(
-    consolidated_rock = case_when(
+  dplyr::distinct(Stream_ID, major_rock, rocks_volcanic, rocks_sedimentary,
+                  rocks_carbonate_evaporite, rocks_metamorphic, rocks_plutonic) %>%
+  dplyr::mutate(
+    consolidated_rock = dplyr::case_when(
       major_rock %in% c("volcanic","volcanic; plutonic") ~ "Volcanic",
-      major_rock %in% c("sedimentary", "sedimentary; metamorphic", 
-                        "sedimentary; carbonate_evaporite", 
+      major_rock %in% c("sedimentary","sedimentary; metamorphic",
+                        "sedimentary; carbonate_evaporite",
                         "volcanic; sedimentary; carbonate_evaporite",
                         "sedimentary; plutonic; carbonate_evaporite; metamorphic") ~ "Sedimentary",
       major_rock %in% c("plutonic","plutonic; metamorphic","volcanic; plutonic; metamorphic") ~ "Plutonic",
@@ -640,55 +647,122 @@ site_clusters <- drivers_df %>%
       major_rock %in% c("carbonate_evaporite","volcanic; carbonate_evaporite") ~ "Carbonate Evaporite",
       TRUE ~ NA_character_
     ),
-    final_cluster = case_when(
-      consolidated_rock=="Sedimentary" & rocks_sedimentary>=70 ~ "Sedimentary",
-      consolidated_rock=="Sedimentary" & rocks_sedimentary<70  ~ "Mixed Sedimentary",
+    final_cluster = dplyr::case_when(
+      consolidated_rock == "Sedimentary" & rocks_sedimentary >= 70 ~ "Sedimentary",
+      consolidated_rock == "Sedimentary" & rocks_sedimentary <  70 ~ "Mixed Sedimentary",
       TRUE ~ consolidated_rock
     )
   ) %>%
-  dplyr::select(Stream_ID,final_cluster)
+  dplyr::select(Stream_ID, final_cluster)
 
+# --- OLD (baseline) CV split for diagnostics: EXACT replica of original ---
 set.seed(42)
-unseen10 <- site_clusters %>% group_by(final_cluster) %>% slice_sample(prop=0.10) %>% pull(Stream_ID)
-trainval  <- setdiff(site_clusters$Stream_ID, unseen10)
+unseen10_random <- site_clusters %>%
+  dplyr::group_by(final_cluster) %>%
+  dplyr::slice_sample(prop = 0.10) %>%
+  dplyr::ungroup() %>%
+  dplyr::pull(Stream_ID)
 
-unseen10_df <- drivers_df %>% filter(Stream_ID %in% unseen10)
-trainval_df <- drivers_df %>% filter(Stream_ID %in% trainval)
-
-trainval_split <- trainval_df %>%
-  group_by(Stream_ID) %>%
-  arrange(Year) %>%
-  mutate(
-    tot_count = n(),
-    n_recent  = ceiling(0.30*tot_count),
-    idx       = row_number(),
-    split     = if_else(idx>tot_count-n_recent,"recent","older")
+# Site-level medians & quantile bins (within each lithology's full range)
+site_summary <- drivers_df %>%
+  dplyr::select(Stream_ID, FNConc, FNYield) %>%
+  dplyr::group_by(Stream_ID) %>%
+  dplyr::summarise(
+    med_conc  = median(FNConc,  na.rm = TRUE),
+    med_yield = median(FNYield, na.rm = TRUE),
+    .groups   = "drop"
   ) %>%
-  ungroup()
+  dplyr::mutate(log_med_yield = log10(pmax(med_yield, .Machine$double.eps))) %>%
+  # Join lithology FIRST, then create bins within each lithology
+  dplyr::inner_join(site_clusters, by = "Stream_ID") %>%
+  dplyr::group_by(final_cluster) %>%
+  dplyr::mutate(
+    conc_bin  = dplyr::ntile(med_conc,      N_CONC),
+    yield_bin = dplyr::ntile(log_med_yield, N_YIELD)
+  ) %>%
+  dplyr::ungroup() %>%
+  dplyr::mutate(stratum = paste(final_cluster, conc_bin, yield_bin, sep = "__"))
 
-older70 <- trainval_split %>% filter(split=="older")  %>% 
-  dplyr::select(-tot_count,-n_recent,-idx,-split)
+# Proportional allocation of ~10% per lithology across its strata
+stratum_counts <- site_summary %>%
+  dplyr::count(final_cluster, stratum, name = "n_cell")
 
-recent30 <- trainval_split %>% filter(split=="recent") %>% 
-  dplyr::select(-tot_count,-n_recent,-idx,-split)
+alloc_counts <- function(df) {
+  n_L <- sum(df$n_cell)
+  m_L <- round(0.10 * n_L)
+  if (m_L < nrow(df)) m_L <- nrow(df)  # at least 1 per non-empty stratum
+  
+  prop <- m_L * df$n_cell / n_L
+  base <- pmax(1L, pmin(df$n_cell, floor(prop)))
+  rem  <- prop - floor(prop)
+  diff <- m_L - sum(base)
+  
+  if (diff > 0) {
+    idx <- order(rem, decreasing = TRUE)
+    for (k in idx) {
+      if (diff == 0) break
+      if (base[k] < df$n_cell[k]) { base[k] <- base[k] + 1L; diff <- diff - 1L }
+    }
+  } else if (diff < 0) {
+    idx <- order(rem, decreasing = FALSE)
+    for (k in idx) {
+      if (diff == 0) break
+      if (base[k] > 1L) { base[k] <- base[k] - 1L; diff <- diff + 1L }
+    }
+  }
+  df$n_take <- base
+  df
+}
 
+alloc_tbl <- stratum_counts %>%
+  dplyr::group_by(final_cluster) %>%
+  dplyr::group_modify(~ alloc_counts(.x)) %>%
+  dplyr::ungroup() %>%
+  dplyr::select(final_cluster, stratum, n_cell, n_take)
 
-# Compute partition-specific RBI & RCS  
+# Sample CV (unseen10) per stratum
+set.seed(42)
+unseen10_tbl <- site_summary %>%
+  dplyr::inner_join(alloc_tbl, by = c("final_cluster","stratum")) %>%
+  dplyr::group_by(final_cluster, stratum) %>%
+  dplyr::group_modify(~ dplyr::slice_sample(.x, n = .x$n_take[1], replace = FALSE)) %>%
+  dplyr::ungroup()
+
+unseen10 <- unseen10_tbl$Stream_ID
+
+# Create partition data frames (unchanged downstream names)
+trainval    <- setdiff(site_clusters$Stream_ID, unseen10)
+unseen10_df <- drivers_df %>% dplyr::filter(Stream_ID %in% unseen10)
+trainval_df <- drivers_df %>% dplyr::filter(Stream_ID %in% trainval)
+
+# Temporal split for remaining sites: 70/30
+trainval_split <- trainval_df %>%
+  dplyr::group_by(Stream_ID) %>%
+  dplyr::arrange(Year) %>%
+  dplyr::mutate(
+    tot_count = dplyr::n(),
+    n_recent  = ceiling(0.30 * tot_count),
+    idx       = dplyr::row_number(),
+    split     = dplyr::if_else(idx > tot_count - n_recent, "recent", "older")
+  ) %>%
+  dplyr::ungroup()
+
+older70  <- trainval_split %>% dplyr::filter(split == "older")  %>% dplyr::select(-tot_count,-n_recent,-idx,-split)
+recent30 <- trainval_split %>% dplyr::filter(split == "recent") %>% dplyr::select(-tot_count,-n_recent,-idx,-split)
+
+# Compute partition-specific RBI & RCS
 daily_kalman <- daily_kalman %>% dplyr::mutate(Year = lubridate::year(Date))
 
-# helper: per-split RBI (per site) and RCS (slope of log(-dQ/dt) ~ log(Q))
 compute_split_metrics <- function(daily_df, siteyear_df, rbi_name, rcs_name) {
   d <- daily_df %>%
-    dplyr::inner_join(siteyear_df %>% dplyr::select(Stream_ID, Year),
-                      by = c("Stream_ID","Year"))
+    dplyr::inner_join(siteyear_df %>% dplyr::select(Stream_ID, Year), by = c("Stream_ID","Year"))
   
   rbi <- d %>%
     dplyr::group_by(Stream_ID) %>%
     dplyr::arrange(Date, .by_group = TRUE) %>%
     dplyr::mutate(dQ = Q - dplyr::lag(Q), abs_dQ = abs(dQ)) %>%
     dplyr::filter(!is.na(abs_dQ)) %>%
-    dplyr::summarise("{rbi_name}" := sum(abs_dQ, na.rm = TRUE) / sum(Q, na.rm = TRUE),
-                     .groups = "drop")
+    dplyr::summarise("{rbi_name}" := sum(abs_dQ, na.rm = TRUE) / sum(Q, na.rm = TRUE), .groups = "drop")
   
   rec <- d %>%
     dplyr::group_by(Stream_ID) %>%
@@ -706,8 +780,7 @@ compute_split_metrics <- function(daily_df, siteyear_df, rbi_name, rcs_name) {
       .slope = {
         ok <- is.finite(rneg) & is.finite(Q) & Q > 0
         if (sum(ok, na.rm = TRUE) >= 50 && dplyr::n_distinct(Q[ok]) > 1) {
-          tryCatch(unname(coef(stats::lm(log(rneg[ok]) ~ log(Q[ok])))[2]),
-                   error = function(e) NA_real_)
+          tryCatch(unname(coef(stats::lm(log(rneg[ok]) ~ log(Q[ok])))[2]), error = function(e) NA_real_)
         } else NA_real_
       },
       .groups = "drop"
@@ -717,27 +790,153 @@ compute_split_metrics <- function(daily_df, siteyear_df, rbi_name, rcs_name) {
   dplyr::full_join(rbi, rec, by = "Stream_ID")
 }
 
-# metrics per partition
-older70_metrics  <- compute_split_metrics(daily_kalman, older70,      "RBI",  "recession_slope")
-recent30_metrics <- compute_split_metrics(daily_kalman, recent30,     "RBI", "recession_slope")
+older70_metrics  <- compute_split_metrics(daily_kalman, older70,  "RBI", "recession_slope")
+recent30_metrics <- compute_split_metrics(daily_kalman, recent30, "RBI", "recession_slope")
 
-older70_out <- older70 %>%
-  dplyr::select(-any_of(c("RBI","recession_slope"))) %>%
-  dplyr::left_join(older70_metrics, by = "Stream_ID") %>%
-  dplyr::filter(recession_slope >= 0) %>%
-  dplyr::filter(complete.cases(.))
-
-recent30_out <- recent30 %>%
-  dplyr::select(-any_of(c("RBI","recession_slope"))) %>%
-  dplyr::left_join(recent30_metrics, by = "Stream_ID") %>%
-  dplyr::filter(recession_slope >= 0) %>%
-  dplyr::filter(complete.cases(.))
+older70_out  <- older70  %>% dplyr::select(-any_of(c("RBI","recession_slope"))) %>% dplyr::left_join(older70_metrics,  by = "Stream_ID") %>% dplyr::filter(recession_slope >= 0) %>% dplyr::filter(complete.cases(.))
+recent30_out <- recent30 %>% dplyr::select(-any_of(c("RBI","recession_slope"))) %>% dplyr::left_join(recent30_metrics, by = "Stream_ID") %>% dplyr::filter(recession_slope >= 0) %>% dplyr::filter(complete.cases(.))
 
 # #############################################################################
-# 9. Combine and export all partitions
+# 9. Exports
 # #############################################################################
 write.csv(unseen10_df, "AllDrivers_unseen10_not_split.csv", row.names = FALSE)
-write.csv(older70_out,  "AllDrivers_older70_split.csv",      row.names = FALSE)
-write.csv(recent30_out, "AllDrivers_recent30_split.csv",     row.names = FALSE)
+write.csv(older70_out, "AllDrivers_older70_split.csv",      row.names = FALSE)
+write.csv(recent30_out,"AllDrivers_recent30_split.csv",     row.names = FALSE)
+
+# #############################################################################
+# 10. Diagnostics (ALL plots show Test Data, CV random, CV stratified)
+#      - One export for Concentrations (histogram + density)
+#      - One export for Yields (histogram + density, log10)
+# #############################################################################
+library(ggplot2)
+library(dplyr)
+library(readr)
+library(tibble)
+library(cowplot)     # for plot grids
+
+# ------------------- plot controls & colors -------------------
+HIST_BINS   <- 30
+DENS_ADJUST <- 1.0
+
+LVL_ORDER <- c("Testing/Training Data", "Validation (stratified)", "Validation (random)")
+COLORS    <- c("Testing/Training Data"        = "#6ea8d3",
+               "Validation (stratified)" = "#525693",
+               "Validation (random)"     = "#9aa0a6")
+
+# ------------------- membership (three groups; no training) -------------------
+cv_strat_sites <- unseen10_df %>% distinct(Stream_ID) %>% mutate(dataset = "Validation (stratified)")
+cv_random_sites <- tibble(Stream_ID = unseen10_random, dataset = "Validation (random)")
+test_sites <- recent30 %>% distinct(Stream_ID) %>% mutate(dataset = "Testing/Training Data")
+
+# helper: minimal theme tweaks
+themer <- theme_minimal(base_size = 12) +
+  theme(legend.title = element_blank(),
+        legend.position = "right",
+        legend.direction = "horizontal",
+        panel.grid = element_blank(),
+        axis.line = element_line(color = "black"))
+
+# =========================
+# CONCENTRATIONS (med_conc)
+# =========================
+sites_all <- bind_rows(test_sites, cv_random_sites, cv_strat_sites)
+
+ss_conc_all <- site_summary %>%
+  inner_join(sites_all, by = "Stream_ID") %>%
+  mutate(dataset = factor(dataset, levels = LVL_ORDER))
+
+# --- A) boxplots ---
+p_conc_box <- ggplot(ss_conc_all, aes(y = dataset, x = med_conc, fill = dataset, color = dataset)) +
+  geom_boxplot(outlier.shape = NA, width = 0.6, alpha = 0.5) +
+  geom_jitter(height = 0.2, alpha = 0.4, size = 1.5) +
+  scale_fill_manual(values = COLORS) +
+  scale_color_manual(values = COLORS) +
+  facet_wrap(~ final_cluster, scales = "free_x", ncol = 3) +
+  labs(x = NULL, y = NULL) +
+  themer +
+  theme(panel.spacing = unit(0.5, "lines"),
+        strip.background = element_rect(fill = "white", color = "black"),
+        panel.border = element_rect(color = "black", fill = NA, linewidth = 0.5))
+
+# --- B) density ---
+p_conc_density <- ggplot(ss_conc_all, aes(x = med_conc, fill = dataset, color = dataset)) +
+  geom_density(alpha = 0.25, adjust = DENS_ADJUST) +
+  scale_fill_manual(values = COLORS) + scale_color_manual(values = COLORS) +
+  facet_wrap(~ final_cluster, scales = "free_x", ncol = 3) +
+  labs(x = expression("DSi Concentration (mg L"^-1*")"), y = "Density") +
+  themer +
+  theme(panel.spacing = unit(0.5, "lines"),
+        strip.background = element_rect(fill = "white", color = "black"),
+        panel.border = element_rect(color = "black", fill = NA, linewidth = 0.5))
+
+# --- Multi-panel export (Concentrations) ---
+conc_legend <- get_legend(p_conc_box + guides(color = guide_legend(override.aes = list(alpha = 1, size = 3))))
+
+conc_plots <- plot_grid(
+  p_conc_box + theme(legend.position = "none"),
+  p_conc_density + theme(legend.position = "none"),
+  ncol = 1,
+  align = "v",
+  axis = "lr"
+)
+
+conc_grid <- plot_grid(
+  conc_plots,
+  conc_legend,
+  ncol = 1,
+  rel_heights = c(1, 0.1)
+)
+
+ggsave("Concentration_Multipanel.png", conc_grid, width = 8, height = 7, dpi = 300, bg = "white")
+
+# =========
+# YIELDS
+# =========
+ss_yld_all <- ss_conc_all  # same membership; pull log_med_yield from site_summary
+
+# --- A) boxplots (yields) ---
+p_yld_box <- ggplot(ss_yld_all, aes(y = dataset, x = med_yield, fill = dataset, color = dataset)) +
+  geom_boxplot(outlier.shape = NA, width = 0.6, alpha = 0.5) +
+  geom_jitter(height = 0.2, alpha = 0.4, size = 1.5) +
+  scale_fill_manual(values = COLORS) +
+  scale_color_manual(values = COLORS) +
+  facet_wrap(~ final_cluster, scales = "free_x", ncol = 3) +
+  labs(x = NULL, y = NULL) +
+  themer +
+  theme(panel.spacing = unit(0.5, "lines"),
+        strip.background = element_rect(fill = "white", color = "black"),
+        panel.border = element_rect(color = "black", fill = NA, linewidth = 0.5))
+
+# --- B) density (yields) ---
+p_yld_density <- ggplot(ss_yld_all, aes(x = med_yield, fill = dataset, color = dataset)) +
+  geom_density(alpha = 0.25, adjust = DENS_ADJUST) +
+  scale_fill_manual(values = COLORS) + scale_color_manual(values = COLORS) +
+  facet_wrap(~ final_cluster, scales = "free_x", ncol = 3) +
+  labs(x = expression("DSi Yield (kg km"^-2*" year"^-1*")"), y = "Density") +
+  themer +
+  theme(panel.spacing = unit(0.5, "lines"),
+        strip.background = element_rect(fill = "white", color = "black"),
+        panel.border = element_rect(color = "black", fill = NA, linewidth = 0.5))
+
+# --- Multi-panel export (Yields) ---
+yld_legend <- get_legend(p_yld_box + guides(color = guide_legend(override.aes = list(alpha = 1, size = 3))))
+
+yld_plots <- plot_grid(
+  p_yld_box + theme(legend.position = "none"),
+  p_yld_density + theme(legend.position = "none"),
+  ncol = 1,
+  align = "v",
+  axis = "lr"
+)
+
+yld_grid <- plot_grid(
+  yld_plots,
+  yld_legend,
+  ncol = 1,
+  rel_heights = c(1, 0.1)
+)
+
+ggsave("Yield_Multipanel.png", yld_grid, width = 8, height = 7, dpi = 300, bg = "white")
+
 
 #---- End of Script ----

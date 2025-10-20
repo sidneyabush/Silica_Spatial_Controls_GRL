@@ -14,7 +14,7 @@
 
 
 # 1. Packages & theme
-librarian::shelf(iml, ggplot2, dplyr, tidyr, randomForest, tibble, scales, cowplot)
+librarian::shelf(iml, ggplot2, dplyr, tidyr, randomForest, tibble, scales, cowplot, ggnewscale, ggridges)
 
 theme_set(
   theme_classic(base_size = 20) +
@@ -23,7 +23,7 @@ theme_set(
       plot.background   = element_rect(fill = "white", colour = NA),
       legend.background = element_rect(fill = "white", colour = NA),
       legend.key        = element_rect(fill = "white", colour = NA),
-      plot.tag          = element_text(size = 26, face = "plain"),  
+      plot.tag          = element_text(size = 26, face = "plain"),
       plot.title        = element_text(size = 24, vjust = 4)
     )
 )
@@ -31,8 +31,9 @@ theme_set(
 # 2. Clear & paths
 rm(list = ls())
 setwd("/Users/sidneybush/Library/CloudStorage/Box-Box/Sidney_Bush/SiSyn")
-fm <- "Final_Models"; od <- "Final_Figures"
-dir.create(od, recursive = TRUE, showWarnings = FALSE)
+fm <- "Final_Models"
+od_png <- "/Users/sidneybush/Library/CloudStorage/Box-Box/Sidney_Bush/SiSyn/GRL_revision1/Figures_v2/PNG"
+od_pdf <- "/Users/sidneybush/Library/CloudStorage/Box-Box/Sidney_Bush/SiSyn/GRL_revision1/Figures_v2/PDF"
 
 # 3. Define subset styling vectors
 subset_levels <- c("older70", "recent30", "unseen10")
@@ -55,7 +56,7 @@ subset_sizes  <- c(
 subset_labs   <- c(
   older70  = "Training",
   recent30 = "Testing",
-  unseen10 = "Cross-Validation"
+  unseen10 = "Validation"
 )
 subset_ann_cols <- c(
   older70  = "gray40",
@@ -98,30 +99,30 @@ kept_FNYield_scaled <- KD_FY %>%
 
 gmin <- 0; gmax <- 1
 
-# 6. Dot‐plot function
+# 6. Dot‐plot function (NO mean bars for final figure)
 dot_plot <- function(SV, KD_s) {
-  shap_df <- as.data.frame(SV) %>% 
-    mutate(id = row_number()) %>% 
+  shap_df <- as.data.frame(SV) %>%
+    mutate(id = row_number()) %>%
     pivot_longer(-id, names_to = "feature", values_to = "shap")
-  
-  val_df  <- KD_s %>% 
+
+  val_df  <- KD_s %>%
     mutate(id = row_number()) %>%
     pivot_longer(-id, names_to = "feature", values_to = "val")
-  
+
   df <- left_join(shap_df, val_df, by = c("id","feature")) %>%
-    mutate(pretty = recode(feature, !!!recode_map)) %>% 
+    mutate(pretty = recode(feature, !!!recode_map)) %>%
     filter(!is.na(pretty))
-  
-  ord <- df %>% 
-    group_by(pretty) %>% 
-    summarize(m = mean(abs(shap)), .groups="drop") %>% 
-    arrange(desc(m)) %>% 
+
+  ord <- df %>%
+    group_by(pretty) %>%
+    summarize(m = mean(abs(shap)), .groups="drop") %>%
+    arrange(desc(m)) %>%
     pull(pretty)
-  
+
   df$pretty <- factor(df$pretty, levels = rev(ord))
-  
-  ggplot(df, aes(shap, pretty)) +
-    geom_vline(xintercept = 0, linetype = "dashed") +
+
+  ggplot(df, aes(x = shap, y = pretty)) +
+    geom_vline(xintercept = 0, linetype = "solid", color = "gray30", linewidth = 1) +
     geom_jitter(aes(fill = val), shape = 21, color = "darkgray",
                 height = 0.2, size = 2.7, alpha = 0.9) +
     scale_fill_gradient(
@@ -145,6 +146,167 @@ dot_plot <- function(SV, KD_s) {
     )
 }
 
+# 6b. Boxplot version (for reviewer only)
+dot_plot_reviewer_box <- function(SV, KD_s) {
+  shap_df <- as.data.frame(SV) %>%
+    mutate(id = row_number()) %>%
+    pivot_longer(-id, names_to = "feature", values_to = "shap")
+
+  val_df  <- KD_s %>%
+    mutate(id = row_number()) %>%
+    pivot_longer(-id, names_to = "feature", values_to = "val")
+
+  df <- left_join(shap_df, val_df, by = c("id","feature")) %>%
+    mutate(pretty = recode(feature, !!!recode_map)) %>%
+    filter(!is.na(pretty))
+
+  ord <- df %>%
+    group_by(pretty) %>%
+    summarize(m = mean(abs(shap)), .groups="drop") %>%
+    arrange(desc(m)) %>%
+    pull(pretty)
+
+  df$pretty <- factor(df$pretty, levels = rev(ord))
+
+  # Calculate mean SHAP with direction
+  mean_shap <- df %>%
+    group_by(pretty) %>%
+    summarize(mean_shap = mean(shap, na.rm = TRUE), .groups = "drop") %>%
+    mutate(
+      pretty = factor(pretty, levels = levels(df$pretty)),
+      direction = ifelse(mean_shap > 0, "Positive", "Negative"),
+      direction_factor = factor(direction, levels = c("Negative", "Positive"))
+    )
+
+  df <- df %>%
+    left_join(mean_shap %>% select(pretty, direction, direction_factor), by = "pretty")
+
+  # Get x-axis range for positioning text
+  x_range <- range(df$shap, na.rm = TRUE)
+  x_text_pos <- x_range[2] + 0.05 * diff(x_range)
+
+  ggplot(df, aes(x = shap, y = pretty, fill = direction_factor)) +
+    geom_vline(xintercept = 0, linetype = "dashed", color = "gray60", linewidth = 0.5) +
+    geom_violin(alpha = 0.6, trim = FALSE, scale = "width") +
+    # Add mean line
+    geom_segment(data = mean_shap,
+                 aes(x = mean_shap, xend = mean_shap,
+                     y = as.numeric(pretty) - 0.4, yend = as.numeric(pretty) + 0.4),
+                 color = "black", linewidth = 1, inherit.aes = FALSE) +
+    # Add mean value text colored by direction
+    geom_text(data = mean_shap,
+              aes(x = x_text_pos, y = pretty, label = sprintf("%.4f", mean_shap),
+                  color = direction_factor),
+              hjust = 0, size = 5.5, inherit.aes = FALSE) +
+    scale_color_manual(
+      values = c("Positive" = "#4575b4", "Negative" = "#d73027"),
+      guide = "none"
+    ) +
+    scale_fill_manual(
+      values = c("Positive" = "#4575b4", "Negative" = "#d73027"),
+      name = "Mean SHAP Direction",
+      guide = guide_legend(title.position = "left", title.hjust = 1, title.vjust = 0.5)
+    ) +
+    scale_x_continuous(expand = expansion(mult = c(0.05, 0.15))) +
+    labs(x = "SHAP Value", y = NULL) +
+    theme(
+      legend.position = "right",
+      legend.direction = "horizontal",
+      legend.title = element_text(size = 10),
+      axis.text.y = element_text(size = 14)
+    )
+}
+
+# 6c. Raincloud plot version (for reviewer only)
+dot_plot_reviewer_rain <- function(SV, KD_s) {
+  shap_df <- as.data.frame(SV) %>%
+    mutate(id = row_number()) %>%
+    pivot_longer(-id, names_to = "feature", values_to = "shap")
+
+  val_df  <- KD_s %>%
+    mutate(id = row_number()) %>%
+    pivot_longer(-id, names_to = "feature", values_to = "val")
+
+  df <- left_join(shap_df, val_df, by = c("id","feature")) %>%
+    mutate(pretty = recode(feature, !!!recode_map)) %>%
+    filter(!is.na(pretty))
+
+  ord <- df %>%
+    group_by(pretty) %>%
+    summarize(m = mean(abs(shap)), .groups="drop") %>%
+    arrange(desc(m)) %>%
+    pull(pretty)
+
+  df$pretty <- factor(df$pretty, levels = rev(ord))
+
+  # Calculate mean SHAP with direction
+  mean_shap <- df %>%
+    group_by(pretty) %>%
+    summarize(mean_shap = mean(shap, na.rm = TRUE), .groups = "drop") %>%
+    mutate(
+      pretty = factor(pretty, levels = levels(df$pretty)),
+      direction = ifelse(mean_shap > 0, "Positive", "Negative")
+    )
+
+  df <- df %>%
+    left_join(mean_shap %>% select(pretty, direction), by = "pretty") %>%
+    mutate(direction_factor = factor(direction, levels = c("Negative", "Positive")))
+
+  # Create numeric y positions for separation
+  df_with_y <- df %>%
+    mutate(y_numeric = as.numeric(pretty))
+
+  mean_shap_with_y <- mean_shap %>%
+    mutate(y_numeric = as.numeric(pretty))
+
+  ggplot(df_with_y, aes(x = shap)) +
+    geom_vline(xintercept = 0, linetype = "dashed", color = "gray60") +
+    # Jittered points colored by scaled value - positioned lower
+    geom_jitter(aes(y = y_numeric - 0.2, fill = val),
+                shape = 21, color = "darkgray",
+                height = 0.1, size = 2.7, alpha = 0.6) +
+    scale_fill_gradient(
+      low = "white", high = "black", limits = c(gmin, gmax),
+      name = "Scaled Value",
+      guide = guide_colourbar(
+        direction      = "horizontal",
+        title.position = "left",
+        title.hjust    = 1,
+        title.vjust    = 1,
+        barwidth       = unit(15, "lines"),
+        barheight      = unit(1.5, "lines"),
+        label.theme    = element_text(size = 20),
+        title.theme    = element_text(size = 24)
+      )
+    ) +
+    new_scale_fill() +
+    # Violin plot colored by direction - positioned higher
+    geom_violin(data = df_with_y, aes(y = y_numeric + 0.2, x = shap, fill = direction_factor, group = pretty),
+                width = 0.4, alpha = 0.6, trim = FALSE, scale = "width") +
+    # Add mean as a vertical line
+    geom_segment(data = mean_shap_with_y,
+                 aes(x = mean_shap, xend = mean_shap,
+                     y = y_numeric - 0.0, yend = y_numeric + 0.4),
+                 color = "black", linewidth = 1.2) +
+    scale_fill_manual(
+      values = c("Positive" = "#4575b4", "Negative" = "#d73027"),
+      name = "Mean SHAP Direction",
+      guide = guide_legend(title.position = "left", title.hjust = 1, title.vjust = 0.5)
+    ) +
+    scale_y_continuous(
+      breaks = seq_along(levels(df$pretty)),
+      labels = levels(df$pretty)
+    ) +
+    coord_cartesian(clip = "off") +
+    labs(x = "SHAP Value", y = NULL) +
+    theme(
+      legend.position = "right",
+      legend.direction = "horizontal",
+      legend.title = element_text(size = 10),
+      plot.margin = margin(5, 15, 5, 5, "pt")
+    )
+}
+
 # 7. Bar‐plot function
 bar_plot <- function(SV) {
   bs <- as.data.frame(SV) %>%
@@ -154,14 +316,14 @@ bar_plot <- function(SV) {
     mutate(pretty = recode(feature, !!!recode_map)) %>%
     filter(!is.na(pretty)) %>%
     arrange(desc(m))
-  
+
   bs$pretty <- factor(bs$pretty, levels = rev(bs$pretty))
-  
+
   ggplot(bs, aes(x = pretty, y = m)) +
     geom_col() +
     coord_flip() +
     scale_y_continuous(expand = expansion(mult = c(0.03, 0.25))) +
-    labs(x = NULL, y = "Mean Absolute SHAP Value")
+    labs(x = NULL, y = "Mean Absolute Value of SHAP")
 }
 
 # 8. Panels A & B
@@ -329,8 +491,8 @@ row2 <- plot_grid(
 )
 
 row3 <- plot_grid(
-  dot_plot(SV_FN, kept_FNConc_scaled) + labs(tag = "e)") + theme(legend.position="none"),
-  dot_plot(SV_FY, kept_FNYield_scaled) + labs(tag = "f)") + theme(legend.position="none"),
+  dot_plot(SV_FN, kept_FNConc_scaled) + labs(tag = "e)", x = "SHAP Value") + theme(legend.position="none"),
+  dot_plot(SV_FY, kept_FNYield_scaled) + labs(tag = "f)", x = "SHAP Value") + theme(legend.position="none"),
   ncol = 2, align = "h", axis = "tblr", rel_widths = c(1, 1)
 )
 
@@ -346,7 +508,70 @@ final_fig2 <- plot_grid(
   align       = "v"
 )
 
+# Save as PNG for viewing
 ggsave(
-  file.path(od, "Fig2_Global_FNConc_FNYield_multi_split.png"),
+  file.path(od_png, "Fig2_Global_FNConc_FNYield_multi_split.png"),
   final_fig2, width = 17, height = 20, dpi = 300, bg = "white"
+)
+
+# Save as PDF for publication
+ggsave(
+  file.path(od_pdf, "Fig2_Global_FNConc_FNYield_multi_split.pdf"),
+  final_fig2, width = 17, height = 20, device = "pdf", bg = "white"
+)
+
+# #############################################################################
+# 10. REVIEWER VERSION: Generate panels e-f WITH exaggerated mean SHAP bars
+# #############################################################################
+cat("\n========================================\n")
+cat("Generating REVIEWER-ONLY version...\n")
+
+# Calculate and print statistics for reviewer response
+mean_stats_conc <- as.data.frame(SV_FN) %>%
+  pivot_longer(everything(), names_to = "feature", values_to = "shap") %>%
+  group_by(feature) %>%
+  summarize(mean_shap = mean(shap, na.rm = TRUE), .groups = "drop")
+
+mean_stats_yield <- as.data.frame(SV_FY) %>%
+  pivot_longer(everything(), names_to = "feature", values_to = "shap") %>%
+  group_by(feature) %>%
+  summarize(mean_shap = mean(shap, na.rm = TRUE), .groups = "drop")
+
+cat("\nCONCENTRATION Mean SHAP range:",
+    sprintf("%.4f to %.4f\n", min(mean_stats_conc$mean_shap), max(mean_stats_conc$mean_shap)))
+cat("YIELD Mean SHAP range:",
+    sprintf("%.2f to %.2f\n", min(mean_stats_yield$mean_shap), max(mean_stats_yield$mean_shap)))
+
+# Create BOXPLOT version
+row3_box <- plot_grid(
+  dot_plot_reviewer_box(SV_FN, kept_FNConc_scaled) + labs(tag = "e)") + theme(legend.position="none"),
+  dot_plot_reviewer_box(SV_FY, kept_FNYield_scaled) + labs(tag = "f)") + theme(legend.position="none"),
+  ncol = 2, align = "h", axis = "tblr", rel_widths = c(1, 1)
+)
+
+leg2_box <- get_legend(
+  dot_plot_reviewer_box(SV_FN, kept_FNConc_scaled) +
+    guides(fill = guide_legend(override.aes = list(alpha = 0.6))) +
+    theme(legend.position = "right", legend.direction = "horizontal",
+          legend.title = element_text(size = 20),
+          legend.text = element_text(size = 18))
+)
+
+reviewer_fig_box <- plot_grid(
+  row3_box,
+  leg2_box,
+  ncol = 1,
+  rel_heights = c(1, 0.15)
+)
+
+# Save reviewer version as PNG
+ggsave(
+  file.path(od_png, "Fig2ef_REVIEWER_ONLY_boxplot.png"),
+  reviewer_fig_box, width = 16.1, height = 6.1, dpi = 300, bg = "white"
+)
+
+# Save reviewer version as PDF
+ggsave(
+  file.path(od_pdf, "Fig2ef_REVIEWER_ONLY_boxplot.pdf"),
+  reviewer_fig_box, width = 16.1, height = 6.1, device = "pdf", bg = "white"
 )

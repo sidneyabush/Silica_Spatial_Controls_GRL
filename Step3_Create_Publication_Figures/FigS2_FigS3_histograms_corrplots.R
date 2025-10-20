@@ -13,6 +13,10 @@
 rm(list = ls())
 setwd("/Users/sidneybush/Library/CloudStorage/Box-Box/Sidney_Bush/SiSyn/harmonization_files")
 
+# Output directories
+od_png <- "/Users/sidneybush/Library/CloudStorage/Box-Box/Sidney_Bush/SiSyn/GRL_revision1/Figures_v2/PNG"
+od_pdf <- "/Users/sidneybush/Library/CloudStorage/Box-Box/Sidney_Bush/SiSyn/GRL_revision1/Figures_v2/PDF"
+
 # Load libraries & theme
 librarian::shelf(dplyr, readr, tidyr, stringr, ggplot2, corrplot)
 
@@ -31,9 +35,9 @@ theme_set(
 # #############################################################################
 # 1. Read in and clean data
 # #############################################################################
-older70     <- read_csv("AllDrivers_older70_split.csv", show_col_types = FALSE)     %>% mutate(subset = "Training")
-recent30    <- read_csv("AllDrivers_recent30_split.csv", show_col_types = FALSE)    %>% mutate(subset = "Testing")
-unseen10_df <- read_csv("AllDrivers_unseen10_not_split.csv", show_col_types = FALSE)    %>% mutate(subset = "Validation")
+older70     <- read_csv("inputs/AllDrivers_older70_split.csv", show_col_types = FALSE)     %>% mutate(subset = "Training")
+recent30    <- read_csv("inputs/AllDrivers_recent30_split.csv", show_col_types = FALSE)    %>% mutate(subset = "Testing")
+unseen10_df <- read_csv("inputs/AllDrivers_unseen10_not_split.csv", show_col_types = FALSE)    %>% mutate(subset = "Validation")
 
 # Combine and set order
 hist_input_df <- bind_rows(older70, recent30, unseen10_df) %>%
@@ -89,9 +93,9 @@ p <- ggplot(hist_long, aes(x = value, fill = subset)) +
   facet_wrap(~ driver, scales = "free", ncol = 4) +
   scale_fill_manual(
     values = c(
-      "Training"            = "gray70",  
-      "Testing"             = "#b9d7ef", 
-      "Validation"    = "#525693"
+      "Training"   = "gray70",
+      "Testing"    = "#b9d7ef",
+      "Validation" = "#525693"
     ),
     guide = guide_legend(override.aes = list(alpha = 1))
   ) +
@@ -104,13 +108,22 @@ p <- ggplot(hist_long, aes(x = value, fill = subset)) +
       legend.title = element_blank(),
       strip.background = element_blank())
 
-# Save to file
+# Save to file as PNG for viewing
 ggsave(
-  filename = "/Users/sidneybush/Library/CloudStorage/Box-Box/Sidney_Bush/SiSyn/Final_Figures/FigS2_histograms_split.png",
+  filename = file.path(od_png, "FigS2_histograms_split.png"),
   plot     = p,
   width    = 16,
   height   = 18,
   dpi      = 300
+)
+
+# Save to file as PDF for publication
+ggsave(
+  filename = file.path(od_pdf, "FigS2_histograms_split.pdf"),
+  plot     = p,
+  width    = 16,
+  height   = 18,
+  device   = "pdf"
 )
 
 # #############################################################################
@@ -127,24 +140,22 @@ save_subset_corrplot <- function(df, label) {
     mutate(across(c(NOx, P), log10)) %>%
     rename_with(~ recode_map[.x]) %>%
     select(all_of(driver_order))
-  
+
   cor_matrix <- cor(numeric_df, use = "pairwise.complete.obs")
-  
+
   # sanitize label for filename
   label_file <- tolower(gsub("[- ]", "_", label))
-  
+
+  # Save as PNG
   png(
-    filename = file.path(
-      "/Users/sidneybush/Library/CloudStorage/Box-Box/Sidney_Bush/SiSyn/Final_Figures",
-      sprintf("FigS3_corrplot_%s_split.png", label_file)
-    ),
-    width  = 10, 
-    height = 10, 
-    units = "in", 
+    filename = file.path(od_png, sprintf("FigS3_corrplot_%s_split.png", label_file)),
+    width  = 10,
+    height = 10,
+    units = "in",
     res = 300
   )
   par(mar = c(1, 1, 1, 1))  # tightened margins
-  
+
   corrplot(
     cor_matrix,
     type         = "lower",
@@ -156,7 +167,29 @@ save_subset_corrplot <- function(df, label) {
     na.label.col = "grey70",
     addgrid.col  = "grey90"
   )
-  
+
+  dev.off()
+
+  # Save as PDF for publication
+  pdf(
+    file = file.path(od_pdf, sprintf("FigS3_corrplot_%s_split.pdf", label_file)),
+    width  = 10,
+    height = 10
+  )
+  par(mar = c(1, 1, 1, 1))  # tightened margins
+
+  corrplot(
+    cor_matrix,
+    type         = "lower",
+    pch.col      = "black",
+    tl.col       = "black",
+    tl.cex       = 1.0,
+    diag         = FALSE,
+    na.label     = "X",
+    na.label.col = "grey70",
+    addgrid.col  = "grey90"
+  )
+
   dev.off()
 }
 

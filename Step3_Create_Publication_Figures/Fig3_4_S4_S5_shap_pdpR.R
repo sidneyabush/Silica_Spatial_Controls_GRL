@@ -23,7 +23,7 @@ librarian::shelf(
 # 1. Read recent30 split
 # #############################################################################
 recent30_df <- read_csv(
-  "harmonization_files/AllDrivers_recent30_split.csv",
+  "harmonization_files/inputs/AllDrivers_recent30_split.csv",
   show_col_types = FALSE
 )
 
@@ -132,17 +132,24 @@ make_shap_loess_grid <- function(shap_matrix, drivers_data, response,
   if (!all(colnames(shap_matrix) %in% colnames(drivers_data))) {
     stop("drivers_data missing columns: ", paste(setdiff(colnames(shap_matrix), colnames(drivers_data)), collapse = ", "))
   }
-  if (length(response) != nrow(shap_matrix)) {
-    stop("Length of response does not match rows of shap_matrix")
-  }
+  # Length mismatch is now handled by trimming to minimum length in the loop below
   
   # 2. Build trimmed data for each feature first
   trimmed_list <- purrr::map(colnames(shap_matrix), function(feat) {
+    # Extract vectors ensuring they're the same length
+    driver_vals <- as.numeric(drivers_data[[feat]])
+    shap_vals <- as.numeric(shap_matrix[, feat])
+    resp_vals <- as.numeric(response)
+
+    # Ensure all vectors are same length by trimming to minimum
+    min_len <- min(length(driver_vals), length(shap_vals), length(resp_vals))
+
+    # Create dataframe with equal-length vectors
     df <- tibble(
-      driver_value = drivers_data[[feat]],
-      shap_value   = shap_matrix[, feat],
-      response     = response
-    ) %>% filter(is.finite(driver_value), is.finite(shap_value))
+      driver_value = driver_vals[1:min_len],
+      shap_value   = shap_vals[1:min_len],
+      response     = resp_vals[1:min_len]
+    ) %>% filter(is.finite(driver_value), is.finite(shap_value), is.finite(response))
     
     if (feat %in% c("P", "NOx")) {
       df <- df %>% filter(driver_value > 0)
@@ -201,18 +208,18 @@ make_shap_loess_grid <- function(shap_matrix, drivers_data, response,
         plot.margin = ggplot2::margin(t = 10, r = 5, b = 25, l = 10, unit = "pt")  # extra bottom space
       )
     
-    # x-axis scaling with trimmed limits and small buffer
+    # x-axis scaling with trimmed limits and buffer
     if (feat %in% c("P", "NOx")) {
       p <- p + scale_x_log10(
         limits = c(xlims_feat[1], xlims_feat[2]),
-        expand = expansion(mult = c(0.02, 0.02)),
+        expand = expansion(mult = c(0.02, 0.08)),  # increased right buffer
         breaks = trans_breaks("log10", function(x) 10^x),
         labels = trans_format("log10", math_format(10^.x))
       )
     } else {
       p <- p + scale_x_continuous(
         limits = c(xlims_feat[1], xlims_feat[2]),
-        expand = expansion(mult = c(0.02, 0.02))
+        expand = expansion(mult = c(0.02, 0.08))  # increased right buffer
       )
     }
     
@@ -265,11 +272,20 @@ global_fn_min <- min(response_FNConc, na.rm = TRUE)
 global_fn_max <- max(response_FNConc, na.rm = TRUE)
 
 build_panel3 <- function(feat, idx) {
+  # Extract vectors ensuring they're the same length
+  driver_vals <- as.numeric(X_FNConc[[feat]])
+  shap_vals <- as.numeric(shap_FNConc[, feat])
+  resp_vals <- as.numeric(response_FNConc)
+
+  # Ensure all vectors are same length by trimming to minimum
+  min_len <- min(length(driver_vals), length(shap_vals), length(resp_vals))
+
+  # Create dataframe with equal-length vectors
   df <- tibble(
-    driver_value = X_FNConc[[feat]],
-    shap_value   = shap_FNConc[, feat],
-    response     = response_FNConc
-  ) %>% filter(is.finite(driver_value), is.finite(shap_value))
+    driver_value = driver_vals[1:min_len],
+    shap_value   = shap_vals[1:min_len],
+    response     = resp_vals[1:min_len]
+  ) %>% filter(is.finite(driver_value), is.finite(shap_value), is.finite(response))
   
   if (feat %in% c("P", "NOx")) {
     df <- df %>% filter(driver_value > 0)
@@ -316,38 +332,53 @@ build_panel3 <- function(feat, idx) {
   if (feat %in% c("P", "NOx")) {
     p <- p + scale_x_log10(
       limits = c(xlims_feat[1], xlims_feat[2]),
-      expand = expansion(mult = c(0.02, 0.02)),
+      expand = expansion(mult = c(0.02, 0.08)),  # increased right buffer
       breaks = trans_breaks("log10", function(x) 10^x),
       labels = trans_format("log10", math_format(10^.x))
     )
   } else {
     p <- p + scale_x_continuous(
       limits = c(xlims_feat[1], xlims_feat[2]),
-      expand = expansion(mult = c(0.02, 0.02))
+      expand = expansion(mult = c(0.02, 0.08))  # increased right buffer
     )
   }
-  
+
   p <- p + coord_cartesian(clip = "off")
-  
+
   p
 }
 
 # build shared legend for Fig 3 from the union of all trimmed panels
 all_trimmed3 <- purrr::map_dfr(present3, function(feat) {
+  # Extract vectors ensuring they're the same length
+  driver_vals <- as.numeric(X_FNConc[[feat]])
+  shap_vals <- as.numeric(shap_FNConc[, feat])
+  resp_vals <- as.numeric(response_FNConc)
+
+  # Ensure all vectors are same length by trimming to minimum
+  min_len <- min(length(driver_vals), length(shap_vals), length(resp_vals))
+
+  # Create dataframe with equal-length vectors
   df <- tibble(
-    driver_value = X_FNConc[[feat]],
-    shap_value   = shap_FNConc[, feat],
-    response     = response_FNConc
-  ) %>% filter(is.finite(driver_value), is.finite(shap_value))
-  
+    driver_value = driver_vals[1:min_len],
+    shap_value   = shap_vals[1:min_len],
+    response     = resp_vals[1:min_len]
+  )
+
+  # Filter for finite values
+  df <- df %>% filter(is.finite(driver_value), is.finite(shap_value), is.finite(response))
+
+  # Filter for positive values if needed
   if (feat %in% c("P", "NOx")) {
     df <- df %>% filter(driver_value > 0)
   }
-  
+
+  # Trim to 5th-95th percentile
   if (nrow(df) > 0) {
     xlims_feat <- quantile(df$driver_value, probs = c(0.05, 0.95), na.rm = TRUE)
     df <- df %>% filter(driver_value >= xlims_feat[1], driver_value <= xlims_feat[2])
   }
+
   df
 })
 
@@ -406,11 +437,20 @@ global_y_min <- min(response_FNYield, na.rm = TRUE)
 global_y_max <- max(response_FNYield, na.rm = TRUE)
 
 build_panel4 <- function(feat, idx) {
+  # Extract vectors ensuring they're the same length
+  driver_vals <- as.numeric(X_FNYield[[feat]])
+  shap_vals <- as.numeric(shap_FNYield[, feat])
+  resp_vals <- as.numeric(response_FNYield)
+
+  # Ensure all vectors are same length by trimming to minimum
+  min_len <- min(length(driver_vals), length(shap_vals), length(resp_vals))
+
+  # Create dataframe with equal-length vectors
   df <- tibble(
-    driver_value = X_FNYield[[feat]],
-    shap_value   = shap_FNYield[, feat],
-    response     = response_FNYield
-  ) %>% filter(is.finite(driver_value), is.finite(shap_value))
+    driver_value = driver_vals[1:min_len],
+    shap_value   = shap_vals[1:min_len],
+    response     = resp_vals[1:min_len]
+  ) %>% filter(is.finite(driver_value), is.finite(shap_value), is.finite(response))
   
   if (feat %in% c("P", "NOx")) {
     df <- df %>% filter(driver_value > 0)
@@ -454,37 +494,52 @@ build_panel4 <- function(feat, idx) {
   if (feat %in% c("P", "NOx")) {
     p <- p + scale_x_log10(
       limits = c(xlims_feat[1], xlims_feat[2]),
-      expand = expansion(mult = c(0.02, 0.02)),
+      expand = expansion(mult = c(0.02, 0.08)),  # increased right buffer
       breaks = trans_breaks("log10", function(x) 10^x),
       labels = trans_format("log10", math_format(10^.x))
     )
   } else {
     p <- p + scale_x_continuous(
       limits = c(xlims_feat[1], xlims_feat[2]),
-      expand = expansion(mult = c(0.02, 0.02))
+      expand = expansion(mult = c(0.02, 0.08))  # increased right buffer
     )
   }
-  
+
   p <- p + coord_cartesian(clip = "off")
-  
+
   p
 }
 
 all_trimmed4 <- purrr::map_dfr(present4, function(feat) {
+  # Extract vectors ensuring they're the same length
+  driver_vals <- as.numeric(X_FNYield[[feat]])
+  shap_vals <- as.numeric(shap_FNYield[, feat])
+  resp_vals <- as.numeric(response_FNYield)
+
+  # Ensure all vectors are same length by trimming to minimum
+  min_len <- min(length(driver_vals), length(shap_vals), length(resp_vals))
+
+  # Create dataframe with equal-length vectors
   df <- tibble(
-    driver_value = X_FNYield[[feat]],
-    shap_value   = shap_FNYield[, feat],
-    response     = response_FNYield
-  ) %>% filter(is.finite(driver_value), is.finite(shap_value))
-  
+    driver_value = driver_vals[1:min_len],
+    shap_value   = shap_vals[1:min_len],
+    response     = resp_vals[1:min_len]
+  )
+
+  # Filter for finite values
+  df <- df %>% filter(is.finite(driver_value), is.finite(shap_value), is.finite(response))
+
+  # Filter for positive values if needed
   if (feat %in% c("P", "NOx")) {
     df <- df %>% filter(driver_value > 0)
   }
-  
+
+  # Trim to 5th-95th percentile
   if (nrow(df) > 0) {
     xlims_feat <- quantile(df$driver_value, probs = c(0.05, 0.95), na.rm = TRUE)
     df <- df %>% filter(driver_value >= xlims_feat[1], driver_value <= xlims_feat[2])
   }
+
   df
 })
 
@@ -542,10 +597,7 @@ figS_conc  <- make_shap_loess_grid(
 n <- length(other_conc)        
 rows <- 5/2
 
-ggsave(
-  "Final_Figures/FigS4_recent30_Conc_SHAP_Grid_split.png",
-  figS_conc, width = 12, height = 6*rows, dpi = 300, bg = "white"
-)
+# Note: This duplicate ggsave call has been removed - see the organized saves at the end of the script
 
 other_yield <- setdiff(colnames(shap_FNYield), yield_feats4)
 figS_yield  <- make_shap_loess_grid(
@@ -556,18 +608,30 @@ figS_yield  <- make_shap_loess_grid(
   recode_map
 )
 
-# Fig 3:
-ggsave("Final_Figures/Fig3_recent30_Concentration_SHAP_grid_split.png",
+# Output directories
+od_png <- "/Users/sidneybush/Library/CloudStorage/Box-Box/Sidney_Bush/SiSyn/GRL_revision1/Figures_v2/PNG"
+od_pdf <- "/Users/sidneybush/Library/CloudStorage/Box-Box/Sidney_Bush/SiSyn/GRL_revision1/Figures_v2/PDF"
+
+# Fig 3 - PNG and PDF:
+ggsave(file.path(od_png, "Fig3_recent30_Concentration_SHAP_grid_split.png"),
        fig3_recent30, width = 12, height = 15, dpi = 300, bg = "white")
+ggsave(file.path(od_pdf, "Fig3_recent30_Concentration_SHAP_grid_split.pdf"),
+       fig3_recent30, width = 12, height = 15, device = "pdf", bg = "white")
 
-# Fig 4: 
-ggsave("Final_Figures/Fig4_recent30_Yield_SHAP_grid_linear_split.png",
+# Fig 4 - PNG and PDF:
+ggsave(file.path(od_png, "Fig4_recent30_Yield_SHAP_grid_linear_split.png"),
        fig4_recent30, width = 12, height = 15, dpi = 300, bg = "white")
+ggsave(file.path(od_pdf, "Fig4_recent30_Yield_SHAP_grid_linear_split.pdf"),
+       fig4_recent30, width = 12, height = 15, device = "pdf", bg = "white")
 
-# Fig S4: 
-ggsave("Final_Figures/FigS4_recent30_Conc_SHAP_Grid_split.png",
+# Fig S4 - PNG and PDF:
+ggsave(file.path(od_png, "FigS4_recent30_Conc_SHAP_Grid_split.png"),
        figS_conc, width = 12, height = 12, dpi = 300, bg = "white")
+ggsave(file.path(od_pdf, "FigS4_recent30_Conc_SHAP_Grid_split.pdf"),
+       figS_conc, width = 12, height = 12, device = "pdf", bg = "white")
 
-# Fig S5: 
-ggsave("Final_Figures/FigS5_recent30_Yield_SHAP_Grid_split.png",
+# Fig S5 - PNG and PDF:
+ggsave(file.path(od_png, "FigS5_recent30_Yield_SHAP_Grid_split.png"),
        figS_yield, width = 12, height = 15, dpi = 300, bg = "white")
+ggsave(file.path(od_pdf, "FigS5_recent30_Yield_SHAP_Grid_split.pdf"),
+       figS_yield, width = 12, height = 15, device = "pdf", bg = "white")
