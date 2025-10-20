@@ -17,7 +17,7 @@ This repository contains an end-to-end R workflow to:
 
 ## Project status
 
-Active (manuscript in submission prep and submitted to *GRL*). Breaking changes are possible as we finalize figures and text.
+Active (manuscript in revision at *GRL*). Breaking changes are possible as we finalize figures and text.
 
 ---
 
