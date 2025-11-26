@@ -3,7 +3,7 @@
 Code for the “spatial controls” analysis behind our global riverine dissolved silicon (DSi) manuscript.
 
 **Associated manuscript:**  
-*Thinking outside the rocks: subsurface water storage, topography, and land cover modulate large-scale riverine dissolved silicon dynamics* — submitted to *Geophysical Research Letters (GRL)*.
+*Thinking outside the rocks: subsurface water storage, topography, and land cover are key modulaters of large-scale riverine dissolved silicon dynamics* — accepted to *Geophysical Research Letters (GRL)*.
 
 This repository contains an end-to-end R workflow to:
 
@@ -17,7 +17,7 @@ This repository contains an end-to-end R workflow to:
 
 ## Project status
 
-Active (manuscript in revision at *GRL*). Breaking changes are possible as we finalize figures and text.
+Accepted, in press at *GRL*. Breaking changes are possible as we finalize figures and text.
 
 ---
 
