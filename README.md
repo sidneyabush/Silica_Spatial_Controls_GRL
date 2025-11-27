@@ -37,58 +37,59 @@ Accepted, in press at *GRL*. Breaking changes are possible as we finalize figure
 
 ## Getting Started
 
-To reproduce the figures from this analysis:
+This workflow processes raw data through three sequential steps to generate manuscript figures. Each step creates outputs needed by the next step.
 
-### 1. Download the data
+### Prerequisites
 
-Download the analysis-ready data from Zenodo: https://doi.org/10.5281/zenodo.14223733
+1. **Download the source data** from the USGS data release (see [Data availability](#data-availability) above)
+2. **Set up your workspace:**
+   - Create a working directory for the analysis (e.g., `/Users/yourname/SiSyn_Analysis/`)
+   - Extract the USGS data to this directory
+   - Open `config.R` in this repository and update `DATA_DIR` to point to your working directory:
+     ```r
+     # Example for macOS/Linux:
+     DATA_DIR <- "/Users/yourname/SiSyn_Analysis"
 
-The download includes:
-- Harmonized driver data
-- Model outputs and predictions
-- SHAP values
-- Model performance metrics
+     # Example for Windows:
+     DATA_DIR <- "C:/Users/yourname/Documents/SiSyn_Analysis"
+     ```
 
-### 2. Extract the data
+### Workflow
 
-Extract the downloaded archive to a location on your computer. The extracted directory should contain:
-```
-your_data_directory/
-├── harmonization_files/
-│   └── inputs/
-├── Final_Models/
-└── GRL_Materials/
-    └── Final_Figures/
-        ├── PNG/
-        └── PDF/
-```
-
-### 3. Configure the data path
-
-Open `config.R` in the root of this repository and update the `DATA_DIR` variable to point to where you extracted the data:
-
+**Step 1: Harmonize data and create partitions**
 ```r
-# Example for macOS/Linux:
-DATA_DIR <- "/Users/yourname/Downloads/SiSyn_Data"
-
-# Example for Windows:
-DATA_DIR <- "C:/Users/yourname/Documents/SiSyn_Data"
+source("Step1_Harmonization/1.1_Unit_conversions_raw_N_P.R")
+source("Step1_Harmonization/1.2_Catalina_Jemez_Kalman_Q.R")
+source("Step1_Harmonization/1.3_Driver_Harmonization_Data_Partitioning.R")
 ```
+Creates: `harmonization_files/inputs/` with harmonized drivers and train/test/validation splits
 
-### 4. Run the figure scripts
-
-All figure scripts are in `Step3_Create_Publication_Figures/`. Each script:
-- Automatically sources `config.R` to load your data paths
-- Reads the required input files
-- Generates publication-quality figures
-- Saves outputs to the configured output directories
-
-Run scripts in any order to generate the figures you need.
-
-**Example:**
+**Step 2: Train models and generate SHAP values**
 ```r
+source("Step2_RF_Model_SHAP/Step2.1_RF_Model_FNConc.R")
+source("Step2_RF_Model_SHAP/Step2.2_RF_Model_FNYield.R")
+source("Step2_RF_Model_SHAP/Step2.3_GenerateSHAP_trainingData.R")
+```
+Creates: `Final_Models/` with trained models, predictions, and SHAP values
+
+**Step 3: Generate manuscript figures**
+```r
+# Run any or all figure scripts:
 source("Step3_Create_Publication_Figures/Fig1_lithology_FNConc_FNYield.R")
+source("Step3_Create_Publication_Figures/Fig2_model_performance_shap_testData.R")
+# ... etc
 ```
+Creates: `GRL_Materials/Final_Figures/` with publication-ready PNG and PDF figures
+
+### Quick Start (Figure generation only)
+
+If you only want to reproduce the figures and already have the processed data:
+1. Download the analysis-ready outputs from Zenodo (see links above)
+2. Extract to your working directory
+3. Update `config.R` with your `DATA_DIR`
+4. Run the Step 3 figure scripts
+
+The config system ensures all scripts find the correct input files automatically.
 
 ---
 

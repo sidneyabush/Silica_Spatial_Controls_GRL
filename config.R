@@ -1,14 +1,15 @@
 # Configuration file for Silica Spatial Controls Analysis
 #
 # SETUP INSTRUCTIONS:
-# 1. Download the analysis data from Zenodo: https://doi.org/10.5281/zenodo.14223733
-# 2. Extract the data to a location on your computer
-# 3. Update the DATA_DIR path below to point to your extracted data directory
+# 1. Create a working directory for your analysis
+# 2. Download the source data (see README for Zenodo/USGS links)
+# 3. Update DATA_DIR below to point to your working directory
+# 4. Run scripts in order: Step1 → Step2 → Step3
 #
-# The data directory should contain the following subdirectories:
-#   - harmonization_files/inputs/
-#   - Final_Models/
-#   - GRL_Materials/Final_Figures/
+# After running all steps, your directory will contain:
+#   - harmonization_files/inputs/  (created by Step 1)
+#   - Final_Models/                (created by Step 2)
+#   - GRL_Materials/Final_Figures/ (created by Step 3)
 
 # ==============================================================================
 # USER CONFIGURATION - EDIT THIS SECTION
@@ -37,19 +38,25 @@ OUTPUT_PDF_DIR <- file.path(DATA_DIR, "GRL_Materials", "Final_Figures", "PDF")
 if (!dir.exists(OUTPUT_PNG_DIR)) dir.create(OUTPUT_PNG_DIR, recursive = TRUE)
 if (!dir.exists(OUTPUT_PDF_DIR)) dir.create(OUTPUT_PDF_DIR, recursive = TRUE)
 
-# Validate that required directories exist
-required_dirs <- c(HARMONIZATION_DIR, MODEL_OUTPUT_DIR)
-for (dir in required_dirs) {
-  if (!dir.exists(dir)) {
-    stop(paste0(
-      "\nERROR: Required directory not found: ", dir,
-      "\n\nPlease check that:\n",
-      "1. You have downloaded the data from Zenodo\n",
-      "2. You have set DATA_DIR correctly in config.R\n",
-      "3. The data directory contains the expected subdirectories\n"
-    ))
-  }
+# Validate configuration
+if (!dir.exists(DATA_DIR)) {
+  stop(paste0(
+    "\nERROR: DATA_DIR does not exist: ", DATA_DIR,
+    "\n\nPlease:\n",
+    "1. Create your working directory\n",
+    "2. Update DATA_DIR in config.R to point to it\n"
+  ))
 }
+
+# Check workflow progress (informational only)
+step1_complete <- dir.exists(HARMONIZATION_DIR)
+step2_complete <- dir.exists(MODEL_OUTPUT_DIR)
 
 message("Configuration loaded successfully!")
 message("Data directory: ", DATA_DIR)
+if (!step1_complete) {
+  message("Note: Run Step 1 scripts to create harmonization_files/")
+}
+if (!step2_complete) {
+  message("Note: Run Step 2 scripts to create Final_Models/")
+}
