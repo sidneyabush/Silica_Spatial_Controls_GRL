@@ -41,7 +41,7 @@ To reproduce the figures from this analysis:
 
 ### 1. Download the data
 
-Download the analysis-ready data from Zenodo: https://doi.org/10.5281/zenodo.14223733
+Download the analysis-ready data from Zenodo (see above)
 
 The download includes:
 - Harmonized driver data
