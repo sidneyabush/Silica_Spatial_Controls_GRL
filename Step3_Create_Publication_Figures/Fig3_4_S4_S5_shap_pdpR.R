@@ -27,9 +27,9 @@ recent30_df <- read_csv(DRIVERS_SPLIT_FILE, show_col_types = FALSE)
 # #############################################################################
 # 2. Load recent30 SHAP values
 # #############################################################################
-load(file.path(MODEL_OUTPUT_DIR, "FNConc_Yearly_shap_values_recent30_split.RData"))
+load(file.path(MODEL_DIR, "FNConc_Yearly_shap_values_recent30_split.RData"))
 shap_FNConc  <- shap_values_FNConc
-load(file.path(MODEL_OUTPUT_DIR, "FNYield_Yearly_shap_values_recent30_split.RData"))
+load(file.path(MODEL_DIR, "FNYield_Yearly_shap_values_recent30_split.RData"))
 shap_FNYield <- shap_values_FNYield
 
 # #############################################################################

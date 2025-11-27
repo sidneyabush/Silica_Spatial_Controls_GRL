@@ -41,20 +41,38 @@ This workflow processes raw data through three sequential steps to generate manu
 
 ### Prerequisites
 
-1. **Download the source data** from the USGS data release (see [Data availability](#data-availability) above)
-2. **Set up your workspace:**
-   - Create a working directory for the analysis (e.g., `/Users/yourname/SiSyn_Analysis/`)
-   - Extract the USGS data to this directory
-   - Open `config.R` in this repository and update `DATA_DIR` to point to your working directory:
+1. **Create a working directory** for your analysis:
+   ```bash
+   mkdir ~/my_sisyn_analysis
+   cd ~/my_sisyn_analysis
+   mkdir data  # You'll put Zenodo downloads here
+   ```
+
+2. **Download the source data** from the USGS data release (see [Data availability](#data-availability) above) and place it in the `data/` folder
+
+3. **Configure the analysis:**
+   - Open `config.R` in this repository
+   - Update `DATA_DIR` to point to your working directory:
      ```r
      # Example for macOS/Linux:
-     DATA_DIR <- "/Users/yourname/SiSyn_Analysis"
+     DATA_DIR <- "/Users/yourname/my_sisyn_analysis"
 
      # Example for Windows:
-     DATA_DIR <- "C:/Users/yourname/Documents/SiSyn_Analysis"
+     DATA_DIR <- "C:/Users/yourname/Documents/my_sisyn_analysis"
      ```
 
 ### Workflow
+
+After setup, your directory structure will look like:
+```
+my_sisyn_analysis/
+├── data/                   # Your Zenodo downloads
+├── harmonization_files/    # Created by Step 1
+├── models/                 # Created by Step 2
+└── figures/                # Created by Step 3
+    ├── png/
+    └── pdf/
+```
 
 **Step 1: Harmonize data and create partitions**
 ```r
@@ -62,7 +80,7 @@ source("Step1_Harmonization/1.1_Unit_conversions_raw_N_P.R")
 source("Step1_Harmonization/1.2_Catalina_Jemez_Kalman_Q.R")
 source("Step1_Harmonization/1.3_Driver_Harmonization_Data_Partitioning.R")
 ```
-Creates: `harmonization_files/inputs/` with harmonized drivers and train/test/validation splits
+→ Creates `harmonization_files/` with harmonized drivers and train/test/validation splits
 
 **Step 2: Train models and generate SHAP values**
 ```r
@@ -70,7 +88,7 @@ source("Step2_RF_Model_SHAP/Step2.1_RF_Model_FNConc.R")
 source("Step2_RF_Model_SHAP/Step2.2_RF_Model_FNYield.R")
 source("Step2_RF_Model_SHAP/Step2.3_GenerateSHAP_trainingData.R")
 ```
-Creates: `Final_Models/` with trained models, predictions, and SHAP values
+→ Creates `models/` with trained Random Forest models, predictions, and SHAP values
 
 **Step 3: Generate manuscript figures**
 ```r
@@ -79,7 +97,7 @@ source("Step3_Create_Publication_Figures/Fig1_lithology_FNConc_FNYield.R")
 source("Step3_Create_Publication_Figures/Fig2_model_performance_shap_testData.R")
 # ... etc
 ```
-Creates: `GRL_Materials/Final_Figures/` with publication-ready PNG and PDF figures
+→ Creates `figures/png/` and `figures/pdf/` with publication-ready figures
 
 ### Quick Start (Figure generation only)
 

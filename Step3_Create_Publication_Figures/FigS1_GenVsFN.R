@@ -13,7 +13,7 @@ librarian::shelf(dplyr, ggplot2, readr, patchwork, cowplot)
 
 ###### Paths ######
 source("../config.R")
-fm <- MODEL_OUTPUT_DIR
+fm <- MODEL_DIR
 od_png <- OUTPUT_PNG_DIR
 od_pdf <- OUTPUT_PDF_DIR
 

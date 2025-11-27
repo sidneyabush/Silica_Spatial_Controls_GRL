@@ -17,7 +17,7 @@ librarian::shelf(ggplot2, dplyr, tidyr, patchwork, colorspace, scales, quiet = T
 # #############################################################################
 # 1. Paths & output
 # #############################################################################
-fm <- MODEL_OUTPUT_DIR
+fm <- MODEL_DIR
 recent30_path <- DRIVERS_SPLIT_FILE
 output_dir_png <- OUTPUT_PNG_DIR
 output_dir_pdf <- OUTPUT_PDF_DIR
