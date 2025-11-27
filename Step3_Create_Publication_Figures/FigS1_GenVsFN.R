@@ -12,14 +12,14 @@
 librarian::shelf(dplyr, ggplot2, readr, patchwork, cowplot)
 
 ###### Paths ######
-setwd("/Users/sidneybush/Library/CloudStorage/Box-Box/Sidney_Bush/SiSyn/")
-fm <- "Final_Models"
-od_png <- "/Users/sidneybush/Library/CloudStorage/Box-Box/Sidney_Bush/SiSyn/GRL_revision1/Figures_v2/PNG"
-od_pdf <- "/Users/sidneybush/Library/CloudStorage/Box-Box/Sidney_Bush/SiSyn/GRL_revision1/Figures_v2/PDF"
+source("../config.R")
+fm <- MODEL_OUTPUT_DIR
+od_png <- OUTPUT_PNG_DIR
+od_pdf <- OUTPUT_PDF_DIR
 
 ###### Load data for S1A/S1B (Gen vs FN) ######
 record_length <- 5
-infile <- "harmonization_files/inputs/AllDrivers_Harmonized_Yearly_filtered_5_years.csv"
+infile <- file.path(HARMONIZATION_DIR, "AllDrivers_Harmonized_Yearly_filtered_5_years.csv")
 
 df <- readr::read_csv(infile, show_col_types = FALSE) |>
   dplyr::select(GenConc, FNConc, GenYield, FNYield) |>

@@ -25,11 +25,14 @@
 rm(list = ls())
 librarian::shelf(dplyr, googledrive, ggplot2, data.table, lubridate, tidyr, stringr, readr, corrplot)
 
+# Load configuration
+source(file.path(dirname(getwd()), "config.R"))
+
 # Define record length
 record_length <- 5
 
 # Set working directory
-setwd("/Users/sidneybush/Library/CloudStorage/Box-Box/Sidney_Bush/SiSyn/harmonization_files/inputs")
+setwd(HARMONIZATION_INPUTS_DIR)
 
 # helper to clean up Stream_ID formatting
 standardize_stream_id <- function(df) {

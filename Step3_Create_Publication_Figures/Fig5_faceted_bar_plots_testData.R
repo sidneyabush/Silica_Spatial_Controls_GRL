@@ -10,17 +10,17 @@
 #   A) <output_dir>/Fig5_Lithology_Stacked_SHAP_WeightedValues_split.png
 
 rm(list = ls())
-setwd("/Users/sidneybush/Library/CloudStorage/Box-Box/Sidney_Bush/SiSyn")
+source("../config.R")
 
 librarian::shelf(ggplot2, dplyr, tidyr, patchwork, colorspace, scales, quiet = TRUE)
 
 # #############################################################################
 # 1. Paths & output
 # #############################################################################
-fm <- "Final_Models"
-recent30_path <- "/Users/sidneybush/Library/CloudStorage/Box-Box/Sidney_Bush/SiSyn/harmonization_files/inputs/AllDrivers_recent30_split.csv"
-output_dir_png <- "/Users/sidneybush/Library/CloudStorage/Box-Box/Sidney_Bush/SiSyn/GRL_revision1/Figures_v2/PNG"
-output_dir_pdf <- "/Users/sidneybush/Library/CloudStorage/Box-Box/Sidney_Bush/SiSyn/GRL_revision1/Figures_v2/PDF"
+fm <- MODEL_OUTPUT_DIR
+recent30_path <- DRIVERS_SPLIT_FILE
+output_dir_png <- OUTPUT_PNG_DIR
+output_dir_pdf <- OUTPUT_PDF_DIR
 
 # #############################################################################
 # 2. Load SHAP values (recent30)

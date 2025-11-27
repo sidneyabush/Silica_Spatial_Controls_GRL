@@ -18,9 +18,12 @@
 # 0) Load packages
 librarian::shelf(randomForest, dplyr, tidyr)
 
+# Load configuration
+source(file.path(dirname(getwd()), "config.R"))
+
 # 1) Paths
-drv_dir    <- "/Users/sidneybush/Library/CloudStorage/Box-Box/Sidney_Bush/SiSyn/harmonization_files/inputs"
-output_dir <- "/Users/sidneybush/Library/CloudStorage/Box-Box/Sidney_Bush/SiSyn/Final_Models"
+drv_dir    <- HARMONIZATION_INPUTS_DIR
+output_dir <- MODELS_DIR
 
 # 2) Load existing RF2 model and feature list
 load(file.path(output_dir, "FNConc_RF2_model_and_settings_split.RData"))

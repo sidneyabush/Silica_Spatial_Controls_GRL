@@ -10,7 +10,7 @@
 # #############################################################################
 
 rm(list = ls())
-setwd("/Users/sidneybush/Library/CloudStorage/Box-Box/Sidney_Bush/SiSyn/harmonization_files/inputs")
+source("../config.R")
 
 librarian::shelf(dplyr, stringr, ggplot2, maps, patchwork, scales, colorspace, ggrepel, 
                  ggspatial, sf, ggpubr, cowplot)
@@ -19,12 +19,12 @@ librarian::shelf(dplyr, stringr, ggplot2, maps, patchwork, scales, colorspace, g
 # 1. Data Preparation  
 # #############################################################################
 
-# 1a) Final site-years 
-drivers_df_final_sites <- read.csv("AllDrivers_Harmonized_Yearly_filtered_5_years.csv", stringsAsFactors = FALSE) %>%
+# 1a) Final site-years
+drivers_df_final_sites <- read.csv(file.path(HARMONIZATION_DIR, "AllDrivers_Harmonized_Yearly_filtered_5_years.csv"), stringsAsFactors = FALSE) %>%
   dplyr::distinct(Stream_ID, .keep_all = TRUE)
 
 # 1b) Site reference table -> build Stream_ID, then keep lat/long
-site_ref <- read.csv("Site_Reference_Table - WRTDS_Reference_Table_LTER_V2.csv",
+site_ref <- read.csv(file.path(HARMONIZATION_DIR, "Site_Reference_Table - WRTDS_Reference_Table_LTER_V2.csv"),
                      check.names = FALSE, stringsAsFactors = FALSE) %>%
   dplyr::distinct(Stream_Name, .keep_all = TRUE) %>%
   dplyr::mutate(
@@ -234,6 +234,9 @@ site_summary <- sites_with_clusters %>%
 site_summary$final_cluster     <- factor(site_summary$final_cluster,     levels = names(my_cluster_colors))
 site_summary$consolidated_rock <- factor(site_summary$consolidated_rock, levels = names(shape_map))
 
+# Set seed for reproducible jitter
+set.seed(42)
+
 p1 <- ggplot(site_summary, aes(x = FNConc, y = final_cluster)) +
   geom_boxplot(aes(fill = final_cluster), outlier.shape = NA, alpha = 0.7) +
   geom_jitter(aes(fill = final_cluster, color = final_cluster, shape = consolidated_rock),  # <-- map shape
@@ -279,13 +282,11 @@ combined_figure <- ggarrange(
 # #############################################################################
 # 6) Export Figures
 # #############################################################################
-output_dir_png <- "/Users/sidneybush/Library/CloudStorage/Box-Box/Sidney_Bush/SiSyn/GRL_revision1/Figures_v2/PNG"
-output_dir_pdf <- "/Users/sidneybush/Library/CloudStorage/Box-Box/Sidney_Bush/SiSyn/GRL_revision1/Figures_v2/PDF"
 
 # Save as PNG for viewing
-ggsave(file.path(output_dir_png, "Fig1_map_and_boxplots.png"), combined_figure,
+ggsave(file.path(OUTPUT_PNG_DIR, "Fig1_map_and_boxplots.png"), combined_figure,
        width = 8, height = 8.5, dpi = 300, bg = "white")
 
 # Save as PDF for publication
-ggsave(file.path(output_dir_pdf, "Fig1_map_and_boxplots.pdf"), combined_figure,
+ggsave(file.path(OUTPUT_PDF_DIR, "Fig1_map_and_boxplots.pdf"), combined_figure,
        width = 8, height = 8.5, device = "pdf", bg = "white")

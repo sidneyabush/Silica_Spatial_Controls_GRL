@@ -7,7 +7,7 @@
 # Outputs created:
 #   A) <out_dir>/FigS6_Boxplots_lithology_split.png
 rm(list = ls())
-setwd("/Users/sidneybush/Library/CloudStorage/Box-Box/Sidney_Bush/SiSyn")
+source("../config.R")
 
 librarian::shelf(ggplot2, dplyr, tidyr, scales, colorspace, quiet = TRUE)
 
@@ -15,10 +15,7 @@ librarian::shelf(ggplot2, dplyr, tidyr, scales, colorspace, quiet = TRUE)
 # 1. Load & prep data
 # #############################################################################
 
-recent30 <- read.csv(
-  "harmonization_files/inputs/AllDrivers_recent30_split.csv",
-  stringsAsFactors = FALSE
-)
+recent30 <- read.csv(DRIVERS_SPLIT_FILE, stringsAsFactors = FALSE)
 
 site_clusters <- recent30 %>%
   distinct(
@@ -174,7 +171,7 @@ p <- ggplot(df_long, aes(x = feature, y = scaled_value)) +
 # #############################################################################
 # Save as PNG for viewing
 ggsave(
-  filename = "/Users/sidneybush/Library/CloudStorage/Box-Box/Sidney_Bush/SiSyn/GRL_revision1/Figures_v2/PNG/FigS6_Boxplots_lithology_split.png",
+  filename = file.path(OUTPUT_PNG_DIR, "FigS6_Boxplots_lithology_split.png"),
   plot     = p,
   width    = 15,
   height   = 10,
@@ -183,7 +180,7 @@ ggsave(
 
 # Save as PDF for publication
 ggsave(
-  filename = "/Users/sidneybush/Library/CloudStorage/Box-Box/Sidney_Bush/SiSyn/GRL_revision1/Figures_v2/PDF/FigS6_Boxplots_lithology_split.pdf",
+  filename = file.path(OUTPUT_PDF_DIR, "FigS6_Boxplots_lithology_split.pdf"),
   plot     = p,
   width    = 15,
   height   = 10,

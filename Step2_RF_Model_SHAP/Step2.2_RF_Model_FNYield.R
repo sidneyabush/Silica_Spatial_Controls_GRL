@@ -32,14 +32,17 @@ librarian::shelf(
 rm(list = ls())
 set.seed(666)
 
+# Load configuration
+source(file.path(dirname(getwd()), "config.R"))
+
 # 1) Setup parallel backend once
 n_cores <- parallel::detectCores() - 1
 cl      <- parallel::makeCluster(n_cores)
 doParallel::registerDoParallel(cl)
 
 # 2) Paths
-drv_dir    <- "/Users/sidneybush/Library/CloudStorage/Box-Box/Sidney_Bush/SiSyn/harmonization_files"
-output_dir <- "/Users/sidneybush/Library/CloudStorage/Box-Box/Sidney_Bush/SiSyn/Final_Models"
+drv_dir    <- HARMONIZATION_DIR
+output_dir <- MODELS_DIR
 setwd(drv_dir)
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 

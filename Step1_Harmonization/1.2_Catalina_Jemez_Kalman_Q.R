@@ -14,8 +14,11 @@
 library(data.table)
 library(stringr)
 
+# Load configuration
+source(file.path(dirname(getwd()), "config.R"))
+
 # 1. set your wd
-setwd("/Users/sidneybush/Library/CloudStorage/Box-Box/Sidney_Bush/SiSyn/harmonization_files")
+setwd(HARMONIZATION_DIR)
 
 # 2. list only the Catalina Jemez CSVs
 files <- list.files(

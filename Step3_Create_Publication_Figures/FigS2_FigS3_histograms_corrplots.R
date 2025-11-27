@@ -11,11 +11,11 @@
 #   B) <out_dir>/FigS3_corrplot_testing_split.png
 
 rm(list = ls())
-setwd("/Users/sidneybush/Library/CloudStorage/Box-Box/Sidney_Bush/SiSyn/harmonization_files")
+source("../config.R")
 
 # Output directories
-od_png <- "/Users/sidneybush/Library/CloudStorage/Box-Box/Sidney_Bush/SiSyn/GRL_revision1/Figures_v2/PNG"
-od_pdf <- "/Users/sidneybush/Library/CloudStorage/Box-Box/Sidney_Bush/SiSyn/GRL_revision1/Figures_v2/PDF"
+od_png <- OUTPUT_PNG_DIR
+od_pdf <- OUTPUT_PDF_DIR
 
 # Load libraries & theme
 librarian::shelf(dplyr, readr, tidyr, stringr, ggplot2, corrplot)
@@ -35,9 +35,9 @@ theme_set(
 # #############################################################################
 # 1. Read in and clean data
 # #############################################################################
-older70     <- read_csv("inputs/AllDrivers_older70_split.csv", show_col_types = FALSE)     %>% mutate(subset = "Training")
-recent30    <- read_csv("inputs/AllDrivers_recent30_split.csv", show_col_types = FALSE)    %>% mutate(subset = "Testing")
-unseen10_df <- read_csv("inputs/AllDrivers_unseen10_not_split.csv", show_col_types = FALSE)    %>% mutate(subset = "Validation")
+older70     <- read_csv(file.path(HARMONIZATION_DIR, "AllDrivers_older70_split.csv"), show_col_types = FALSE)     %>% mutate(subset = "Training")
+recent30    <- read_csv(file.path(HARMONIZATION_DIR, "AllDrivers_recent30_split.csv"), show_col_types = FALSE)    %>% mutate(subset = "Testing")
+unseen10_df <- read_csv(file.path(HARMONIZATION_DIR, "AllDrivers_unseen10_not_split.csv"), show_col_types = FALSE)    %>% mutate(subset = "Validation")
 
 # Combine and set order
 hist_input_df <- bind_rows(older70, recent30, unseen10_df) %>%

@@ -35,6 +35,64 @@ Active (manuscript in revision at *GRL*). Breaking changes are possible as we fi
 > - The Step 1 scripts document the transformations from the USGS release to analysis-ready tables; see each script’s header for expected filenames and paths.  
 ---
 
+## Getting Started
+
+To reproduce the figures from this analysis:
+
+### 1. Download the data
+
+Download the analysis-ready data from Zenodo: https://doi.org/10.5281/zenodo.14223733
+
+The download includes:
+- Harmonized driver data
+- Model outputs and predictions
+- SHAP values
+- Model performance metrics
+
+### 2. Extract the data
+
+Extract the downloaded archive to a location on your computer. The extracted directory should contain:
+```
+your_data_directory/
+├── harmonization_files/
+│   └── inputs/
+├── model_output_files/
+├── model_performance/
+└── GRL_Materials/
+    └── Final_Figures/
+        ├── PNG/
+        └── PDF/
+```
+
+### 3. Configure the data path
+
+Open `config.R` in the root of this repository and update the `DATA_DIR` variable to point to where you extracted the data:
+
+```r
+# Example for macOS/Linux:
+DATA_DIR <- "/Users/yourname/Downloads/SiSyn_Data"
+
+# Example for Windows:
+DATA_DIR <- "C:/Users/yourname/Documents/SiSyn_Data"
+```
+
+### 4. Run the figure scripts
+
+All figure scripts are in `Step3_Create_Publication_Figures/`. Each script:
+- Automatically sources `config.R` to load your data paths
+- Reads the required input files
+- Generates publication-quality figures
+- Saves outputs to the configured output directories
+
+Run scripts in any order to generate the figures you need.
+
+**Example:**
+```r
+source("Step3_Create_Publication_Figures/Fig1_lithology_FNConc_FNYield.R")
+```
+
+---
+
 ## Repository structure
 
 - `Step1_Harmonization/` — scripts to convert units, assemble WRTDS–Kalman + discharge tables for Catalina Jemez sites, and build the harmonized drivers + data partitions for all sites.

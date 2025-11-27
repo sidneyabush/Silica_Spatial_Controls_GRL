@@ -22,8 +22,11 @@ librarian::shelf(
 rm(list = ls())
 set.seed(123)
 
+# Load configuration
+source(file.path(dirname(getwd()), "config.R"))
+
 ## 3. Set WD
-setwd("/Users/sidneybush/Library/CloudStorage/Box-Box/Sidney_Bush/SiSyn")
+setwd(BASE_DATA_PATH)
 final_models_dir <- "Final_Models"
 
 # 4. Load FNConc model & kept‑drivers into their own env to avoid name clashes
