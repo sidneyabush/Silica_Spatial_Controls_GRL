@@ -7,8 +7,7 @@
 #
 # The data directory should contain the following subdirectories:
 #   - harmonization_files/inputs/
-#   - model_output_files/
-#   - model_performance/
+#   - Final_Models/
 #   - GRL_Materials/Final_Figures/
 
 # ==============================================================================
@@ -26,9 +25,9 @@ DATA_DIR <- "/path/to/your/data/directory"
 
 # Input data directories
 HARMONIZATION_DIR <- file.path(DATA_DIR, "harmonization_files", "inputs")
-MODEL_OUTPUT_DIR <- file.path(DATA_DIR, "model_output_files")
+MODEL_OUTPUT_DIR <- file.path(DATA_DIR, "Final_Models")
 MODEL_PERFORMANCE_DIR <- file.path(DATA_DIR, "model_performance")
-DRIVERS_SPLIT_FILE <- file.path(MODEL_OUTPUT_DIR, "AllDrivers_recent30_split.csv")
+DRIVERS_SPLIT_FILE <- file.path(HARMONIZATION_DIR, "AllDrivers_recent30_split.csv")
 
 # Output directories
 OUTPUT_PNG_DIR <- file.path(DATA_DIR, "GRL_Materials", "Final_Figures", "PNG")
@@ -39,7 +38,7 @@ if (!dir.exists(OUTPUT_PNG_DIR)) dir.create(OUTPUT_PNG_DIR, recursive = TRUE)
 if (!dir.exists(OUTPUT_PDF_DIR)) dir.create(OUTPUT_PDF_DIR, recursive = TRUE)
 
 # Validate that required directories exist
-required_dirs <- c(HARMONIZATION_DIR, MODEL_OUTPUT_DIR, MODEL_PERFORMANCE_DIR)
+required_dirs <- c(HARMONIZATION_DIR, MODEL_OUTPUT_DIR)
 for (dir in required_dirs) {
   if (!dir.exists(dir)) {
     stop(paste0(

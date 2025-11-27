@@ -56,8 +56,7 @@ Extract the downloaded archive to a location on your computer. The extracted dir
 your_data_directory/
 ├── harmonization_files/
 │   └── inputs/
-├── model_output_files/
-├── model_performance/
+├── Final_Models/
 └── GRL_Materials/
     └── Final_Figures/
         ├── PNG/
