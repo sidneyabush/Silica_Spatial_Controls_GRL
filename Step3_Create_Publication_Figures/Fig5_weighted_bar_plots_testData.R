@@ -1,37 +1,30 @@
 # #############################################################################
-# Fig 5: weighted lithology SHAP bars 
+# Fig 5: weighted lithology SHAP bars
 # #############################################################################
 # Required inputs:
-#   1) <fm>/FNConc_Yearly_shap_values_recent30_split.RData
-#   2) <fm>/FNYield_Yearly_shap_values_recent30_split.RData
-#   3) <drv_dir>/AllDrivers_recent30_split.csv
+#   1) <MODEL_DIR>/FNConc_Yearly_shap_values_recent30_split.RData
+#   2) <MODEL_DIR>/FNYield_Yearly_shap_values_recent30_split.RData
+#   3) <DRIVERS_SPLIT_FILE> (AllDrivers_recent30_split.csv)
 #
 # Outputs created:
-#   A) <output_dir>/Fig5_Lithology_Stacked_SHAP_WeightedValues_split.png
+#   A) <OUTPUT_PNG_DIR>/Fig5_Lithology_Faceted_SHAP_Within_Lithology.png
+#   B) <OUTPUT_PDF_DIR>/Fig5_Lithology_Faceted_SHAP_Within_Lithology.pdf
 
 rm(list = ls())
-setwd("/Users/sidneybush/Library/CloudStorage/Box-Box/Sidney_Bush/SiSyn")
+source("../config.R")
 
 librarian::shelf(ggplot2, dplyr, tidyr, patchwork, colorspace, scales, quiet = TRUE)
 
 # #############################################################################
-# 1. Paths & output
+# 1. Load SHAP values (recent30)
 # #############################################################################
-fm <- "Final_Models"
-recent30_path <- "/Users/sidneybush/Library/CloudStorage/Box-Box/Sidney_Bush/SiSyn/harmonization_files/inputs/AllDrivers_recent30_split.csv"
-output_dir_png <- "/Users/sidneybush/Library/CloudStorage/Box-Box/Sidney_Bush/SiSyn/GRL_revision1/Figures_v2/PNG"
-output_dir_pdf <- "/Users/sidneybush/Library/CloudStorage/Box-Box/Sidney_Bush/SiSyn/GRL_revision1/Figures_v2/PDF"
+load(file.path(MODEL_DIR, "FNConc_Yearly_shap_values_recent30_split.RData"))
+load(file.path(MODEL_DIR, "FNYield_Yearly_shap_values_recent30_split.RData"))
 
 # #############################################################################
-# 2. Load SHAP values (recent30)
+# 2. Read recent30 split
 # #############################################################################
-load(file.path(fm, "FNConc_Yearly_shap_values_recent30_split.RData"))   
-load(file.path(fm, "FNYield_Yearly_shap_values_recent30_split.RData"))  
-
-# #############################################################################
-# 3. Read recent30 split
-# #############################################################################
-recent30 <- read.csv(recent30_path, stringsAsFactors = FALSE)
+recent30 <- read.csv(DRIVERS_SPLIT_FILE, stringsAsFactors = FALSE)
 
 # #############################################################################
 # 4. Recreate final_cluster 
@@ -279,7 +272,7 @@ fig_litho_shap <- conc_plot / yield_plot
 
 # Save as PNG for viewing
 ggsave(
-  file.path(output_dir_png, "Fig5_Lithology_Faceted_SHAP_Within_Lithology.png"),
+  file.path(OUTPUT_PNG_DIR, "Fig5_Lithology_Faceted_SHAP_Within_Lithology.png"),
   fig_litho_shap,
   width  = 23,
   height = 12,
@@ -289,7 +282,7 @@ ggsave(
 
 # Save as PDF for publication
 ggsave(
-  file.path(output_dir_pdf, "Fig5_Lithology_Faceted_SHAP_Within_Lithology.pdf"),
+  file.path(OUTPUT_PDF_DIR, "Fig5_Lithology_Faceted_SHAP_Within_Lithology.pdf"),
   fig_litho_shap,
   width  = 23,
   height = 12,

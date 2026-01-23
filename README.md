@@ -135,7 +135,7 @@ The config system ensures all scripts find the correct input files automatically
 - `Fig1_lithology_FNConc_FNYield.R` — **Fig1.** Creates site map and saves `Fig1_map_and_boxplots.png`.
 - `Fig2_model_performance_shap_testData.R` — **Fig2.** Creates Figure 2 (train/test/cross-val performance + SHAP bars/dot plots for FNConc & FNYield) and saves `Fig2_Global_FNConc_FNYield_multi_split.png`.
 - `Fig3_4_S4_S5_shap_pdpR` — **Figs3,4,S4,S5.** Creates SHAP–LOESS panels for recent30 and assembles Figures 3, 4, S4, and S5.
-- `Fig5_weighted_bar_plots_testData.R` — **Fig5.** Builds lithology-weighted stacked SHAP bar charts (concentration & yield) and saves `Fig5_Lithology_Stacked_SHAP_WeightedValues_split.png`.
+- `Fig5_weighted_bar_plots_testData.R` — **Fig5.** Builds lithology-weighted stacked SHAP bar charts (concentration & yield) and saves `Fig5_Lithology_Faceted_SHAP_Within_Lithology.png`.
 - `FigS1_GenVsFN.R` — **FigS1.** Generates Gen vs FN scatterplots and OLS predicted-vs-observed panels A–D and saves `FigS1_GenFN_and_OLS.png`.
 - `FigS2_FigS3_histograms_corrplots.R` — **FigsS2,S3.** Creates partitioned driver histograms and a Testing-only correlation plot, saving `FigS2_histograms_split.png` and `FigS3_corrplot_testing_split.png`.
 - `FigS6_boxplots_lithology_testData.R` — **FigS6.** Generates faceted 3×2 boxplots of scaled driver distributions by lithology for the Testing (recent30) split and saves `FigS6_Boxplots_lithology_split.png`.
