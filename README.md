@@ -1,25 +1,7 @@
-# Silica Spatial Controls - GRL
+# Thinking outside the rocks: Subsurface water storage, topography, and land cover are key modulators of large‐scale riverine dissolved silicon dynamics
 
-Code for the “spatial controls” analysis behind our global riverine dissolved silicon (DSi) manuscript.
+**Bush, S. A.**, Johnson, K., Jankowski, K. J., Carey, J. C., Sethna, L. R., Lyon, N. J., & Sullivan, P. L. (2026). Thinking outside the rocks: Subsurface water storage, topography, and land cover are key modulators of large‐scale riverine dissolved silicon dynamics. Geophysical Research Letters, 53(2), e2025GL118853.  https://doi.org/10.1029/2025GL118853
 
-**Associated manuscript:**  
-*Thinking outside the rocks: subsurface water storage, topography, and land cover are key modulaters of large-scale riverine dissolved silicon dynamics* — accepted to *Geophysical Research Letters (GRL)*.
-
-This repository contains an end-to-end R workflow to:
-
-1) harmonize watershed-scale drivers,  
-2) create train/test and cross-site (withheld) splits,  
-3) fit Random Forest models for DSi concentrations and yields,  
-4) compute SHAP values for interpretation, and  
-5) generate manuscript figures.
-
----
-
-## Project status
-
-Accepted, in press at *GRL*. Breaking changes are possible as we finalize figures and text.
-
----
 
 ## Data availability 
 
@@ -32,84 +14,8 @@ Accepted, in press at *GRL*. Breaking changes are possible as we finalize figure
 * **Software: [![DOI](https://zenodo.org/badge/1038792577.svg)](https://doi.org/10.5281/zenodo.16884258)**  
 
 > **Notes:**  
-> - The Step 1 scripts document the transformations from the USGS release to analysis-ready tables; see each script’s header for expected filenames and paths.  
----
+> - The Step 1 scripts document the transformations from the USGS release to analysis-ready tables; see each script’s header for expected filenames and paths.
 
-## Getting Started
-
-This workflow processes raw data through three sequential steps to generate manuscript figures. Each step creates outputs needed by the next step.
-
-### Prerequisites
-
-1. **Create a working directory** for your analysis:
-   ```bash
-   mkdir ~/my_sisyn_analysis
-   cd ~/my_sisyn_analysis
-   mkdir data  # You'll put Zenodo downloads here
-   ```
-
-2. **Download the source data** from the USGS data release (see [Data availability](#data-availability) above) and place it in the `data/` folder
-
-3. **Configure the analysis:**
-   - Open `config.R` in this repository
-   - Update `DATA_DIR` to point to your working directory:
-     ```r
-     # Example for macOS/Linux:
-     DATA_DIR <- "/Users/yourname/my_sisyn_analysis"
-
-     # Example for Windows:
-     DATA_DIR <- "C:/Users/yourname/Documents/my_sisyn_analysis"
-     ```
-
-### Workflow
-
-After setup, your directory structure will look like:
-```
-my_sisyn_analysis/
-├── data/                   # Your Zenodo downloads
-├── harmonization_files/    # Created by Step 1
-├── models/                 # Created by Step 2
-└── figures/                # Created by Step 3
-    ├── png/
-    └── pdf/
-```
-
-**Step 1: Harmonize data and create partitions**
-```r
-source("Step1_Harmonization/1.1_Unit_conversions_raw_N_P.R")
-source("Step1_Harmonization/1.2_Catalina_Jemez_Kalman_Q.R")
-source("Step1_Harmonization/1.3_Driver_Harmonization_Data_Partitioning.R")
-```
-→ Creates `harmonization_files/` with harmonized drivers and train/test/validation splits
-
-**Step 2: Train models and generate SHAP values**
-```r
-source("Step2_RF_Model_SHAP/Step2.1_RF_Model_FNConc.R")
-source("Step2_RF_Model_SHAP/Step2.2_RF_Model_FNYield.R")
-source("Step2_RF_Model_SHAP/Step2.3_GenerateSHAP_trainingData.R")
-```
-→ Creates `models/` with trained Random Forest models, predictions, and SHAP values
-
-**Step 3: Generate manuscript figures**
-```r
-# Run any or all figure scripts:
-source("Step3_Create_Publication_Figures/Fig1_lithology_FNConc_FNYield.R")
-source("Step3_Create_Publication_Figures/Fig2_model_performance_shap_testData.R")
-# ... etc
-```
-→ Creates `figures/png/` and `figures/pdf/` with publication-ready figures
-
-### Quick Start (Figure generation only)
-
-If you only want to reproduce the figures and already have the processed data:
-1. Download the analysis-ready outputs from Zenodo (see links above)
-2. Extract to your working directory
-3. Update `config.R` with your `DATA_DIR`
-4. Run the Step 3 figure scripts
-
-The config system ensures all scripts find the correct input files automatically.
-
----
 
 ## Repository structure
 
@@ -117,40 +23,6 @@ The config system ensures all scripts find the correct input files automatically
 - `Step2_RF_Model_SHAP/` — scripts to train RF models (FNConc, FNYield), generate predictions/diagnostics, and compute SHAP values.
 - `Step3_Create_Publication_Figures/` — scripts to build all manuscript and SI figures.
 
----
-
-## Overview of scripts
-
-### Step1_Harmonization/
-- `1.1_Unit_conversions_raw_N_P.R` — Convert raw NOx/NO3 and SRP/PO4 to mg/L using LTER-specific factors; filter to 2001–2023 for listed sites; export `converted_raw_NP.csv`.
-- `1.2_Catalina_Jemez_Kalman_Q.R` — Combine Catalina–Jemez annual WRTDS–Kalman CSVs, add IDs/metadata; export the annual table plus a daily-discharge subset for `Catalina Jemez__OR_low` and `Catalina Jemez__OR_WEIR`.
-- `1.3_Driver_Harmonization_Data_Partitioning.R` — Build harmonized per-year drivers (yields, RBI, recession slope, land cover, N/P gap-fills), apply QC/outlier rules, and write the full dataset plus 70/30 temporal splits and a 10% spatial holdout.
-
-### Step2_RF_Model_SHAP/
-- `Step2.1_RF_Model_FNConc.R` — Train FNConc RF on `older70` (RF1 + bootstrap stability selection → RF2); predict on `recent30` and `unseen10`; save diagnostics, predictions, model artifacts, and kept drivers for SHAP.
-- `Step2.2_RF_Model_FNYield.R` — Train FNYield RF on `older70` (RF1 + bootstrap stability selection → RF2); predict on `recent30` and `unseen10`; save diagnostics, predictions, model artifacts, and kept drivers for SHAP.
-- `Step2.3_GenerateSHAP_trainingData.R` — Compute SHAP values for FNConc and FNYield using trained RF2 models on the `recent30` kept-drivers subset; save results for re-loading and plotting.
-
-### Step3_Create_Publication_Figures/
-- `Fig1_lithology_FNConc_FNYield.R` — **Fig1.** Creates site map and saves `Fig1_map_and_boxplots.png`.
-- `Fig2_model_performance_shap_testData.R` — **Fig2.** Creates Figure 2 (train/test/cross-val performance + SHAP bars/dot plots for FNConc & FNYield) and saves `Fig2_Global_FNConc_FNYield_multi_split.png`.
-- `Fig3_4_S4_S5_shap_pdpR` — **Figs3,4,S4,S5.** Creates SHAP–LOESS panels for recent30 and assembles Figures 3, 4, S4, and S5.
-- `Fig5_weighted_bar_plots_testData.R` — **Fig5.** Builds lithology-weighted stacked SHAP bar charts (concentration & yield) and saves `Fig5_Lithology_Faceted_SHAP_Within_Lithology.png`.
-- `FigS1_GenVsFN.R` — **FigS1.** Generates Gen vs FN scatterplots and OLS predicted-vs-observed panels A–D and saves `FigS1_GenFN_and_OLS.png`.
-- `FigS2_FigS3_histograms_corrplots.R` — **FigsS2,S3.** Creates partitioned driver histograms and a Testing-only correlation plot, saving `FigS2_histograms_split.png` and `FigS3_corrplot_testing_split.png`.
-- `FigS6_boxplots_lithology_testData.R` — **FigS6.** Generates faceted 3×2 boxplots of scaled driver distributions by lithology for the Testing (recent30) split and saves `FigS6_Boxplots_lithology_split.png`.
-
----
-
-## Script headers (inputs/outputs)
-
-Each script begins with a brief header that lists:
-- **Required inputs** (files/tables the script expects), and  
-- **Outputs created** (artifacts the script writes, e.g., CSVs, RDS models, figures).
-
-Update the paths in those headers to match your local setup.
-
----
 
 ## Software & R packages
 
@@ -161,4 +33,3 @@ Update the paths in those headers to match your local setup.
   `randomForest`, `fastshap`, `iml`, `pdp`,  
   `foreach`, `doParallel`, and `librarian`.
 
----
